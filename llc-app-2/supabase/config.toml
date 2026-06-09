@@ -1,0 +1,3 @@
+# Minimal config for the `ai` Edge Function.
+[functions.ai]
+verify_jwt = true
