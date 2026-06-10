@@ -1,0 +1,31 @@
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
+import { D } from "../theme/tokens";
+
+export default function ForcePassword({ email, onDone }) {
+  const [nw, setNw] = useState(""); const [nw2, setNw2] = useState("");
+  const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setMsg("");
+    if (nw.length < 8) { setMsg("Use at least 8 characters"); return; }
+    if (nw !== nw2) { setMsg("Passwords don't match"); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: nw, data: { must_change: false } });
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    onDone && onDone();
+  };
+  const inp = { width: "100%", boxSizing: "border-box", background: D.lift, border: `1px solid ${D.line}`, borderRadius: 8, padding: "10px 12px", color: D.ink, fontFamily: "inherit", fontSize: 13, marginBottom: 10, outline: "none" };
+  return (
+    <div style={{ minHeight: "100vh", background: D.bg, color: D.ink, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter Tight',system-ui,sans-serif", padding: 20 }}>
+      <div style={{ width: 360, maxWidth: "100%", background: D.card, border: `1px solid ${D.line}`, borderRadius: 14, padding: 22 }}>
+        <div style={{ fontFamily: "'Archivo Black',sans-serif", fontSize: 20, marginBottom: 4 }}>Set your password</div>
+        <div style={{ fontSize: 12.5, color: D.sub, marginBottom: 16, lineHeight: 1.5 }}>Welcome{email ? `, ${email}` : ""}. Create your own password to finish setting up your account.</div>
+        <input type="password" value={nw} onChange={e => setNw(e.target.value)} placeholder="New password" style={inp} />
+        <input type="password" value={nw2} onChange={e => setNw2(e.target.value)} placeholder="Confirm new password" style={inp} />
+        {msg && <div style={{ color: "#FF6B6B", fontSize: 11.5, marginBottom: 10 }}>{msg}</div>}
+        <button onClick={save} disabled={busy} style={{ width: "100%", background: D.acc, color: "#0B0B0C", border: 0, borderRadius: 8, padding: "11px", fontWeight: 800, fontSize: 13, cursor: "pointer", opacity: busy ? .6 : 1 }}>{busy ? "Saving…" : "Save & continue"}</button>
+      </div>
+    </div>
+  );
+}
