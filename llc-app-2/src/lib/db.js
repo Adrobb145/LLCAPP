@@ -30,7 +30,12 @@ export async function setPassword(password) {
 // Role-gated server-side invite (owner→coach, coach→athlete). Sends the email.
 export async function invite(payload) {
   const { data, error } = await supabase.functions.invoke("invite", { body: payload });
-  if (error) throw error;
+  if (error) {
+    // supabase-js hides the function's real message — dig it out of the response body.
+    let msg = error.message;
+    try { const body = await error.context.json(); if (body && body.error) msg = body.error; } catch (e) {}
+    throw new Error(msg);
+  }
   if (data && data.error) throw new Error(data.error);
   return data;
 }
