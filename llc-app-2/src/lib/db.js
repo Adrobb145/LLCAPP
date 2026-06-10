@@ -23,13 +23,16 @@ export async function getProfile() {
   const { data } = await supabase.from("profiles").select("*").maybeSingle();
   return data || null;
 }
-export async function setupCoach(name, initials) {
-  const { data, error } = await supabase.rpc("setup_coach", { p_name: name, p_initials: initials });
-  if (error) throw error; return data;
+export async function setPassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
 }
-export async function linkAthlete() {
-  const { data, error } = await supabase.rpc("link_athlete");
-  if (error) throw error; return data;
+// Role-gated server-side invite (owner→coach, coach→athlete). Sends the email.
+export async function invite(payload) {
+  const { data, error } = await supabase.functions.invoke("invite", { body: payload });
+  if (error) throw error;
+  if (data && data.error) throw new Error(data.error);
+  return data;
 }
 
 // ---- load everything in scope ---------------------------------------------

@@ -4,10 +4,10 @@
 import { useState } from "react";
 import { D } from "../theme/tokens";
 
-export default function AddClient({ onAdd, onClose }) {
+export default function AddClient({ onAdd, onClose, backend }) {
   const [f, setF] = useState({ name: "", email: "", goal: "", bw: "", block: "Foundation", totalWeeks: 6, sq: "", bn: "", dl: "", pin: "" });
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
-  const canSave = f.name.trim().length > 1;
+  const canSave = f.name.trim().length > 1 && (!backend || /\S+@\S+\.\S+/.test(f.email));
 
   const save = () => {
     if (!canSave) return;
@@ -53,9 +53,9 @@ export default function AddClient({ onAdd, onClose }) {
 
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
         <button className="btn sec" onClick={onClose}>Cancel</button>
-        <button className="btn" disabled={!canSave} style={{ opacity: canSave ? 1 : .5 }} onClick={save}>Add Client</button>
+        <button className="btn" disabled={!canSave} style={{ opacity: canSave ? 1 : .5 }} onClick={save}>{backend?"Send Invite":"Add Client"}</button>
       </div>
-      <div style={{ fontSize: 11, color: D.sub, marginTop: 12, lineHeight: 1.5 }}>A 3-day starter program is generated from the lifts above — edit it in Build Day. The athlete signs up at your app URL with the email above and picks "I'm an athlete — link my account."</div>
+      <div style={{ fontSize: 11, color: D.sub, marginTop: 12, lineHeight: 1.5 }}>{backend?"An email invite is sent to the athlete to set a password and log in. A starter program is generated from the lifts above — edit it in Build Day.":"A 3-day starter program is generated from the lifts above — edit it in Build Day."}</div>
     </div>
   </div>);
 }

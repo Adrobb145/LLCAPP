@@ -15,6 +15,7 @@ import ClientApp from "./athlete/ClientApp";
 import CoachAuth from "./coach/CoachAuth";
 import Roster from "./coach/Roster";
 import AddClient from "./coach/AddClient";
+import InviteCoach from "./coach/InviteCoach";
 import CoachInsights from "./coach/CoachInsights";
 import SessionsTracker from "./coach/SessionsTracker";
 import ProgramBuilder from "./coach/ProgramBuilder";
@@ -97,9 +98,26 @@ export default function App(){
   const logReadiness=(cid,rec)=>setReadiness(p=>({...p,[cid]:[...(p[cid]||[]),rec]}));
   const setNutrition=(cid,nt)=>setClients(p=>p.map(c=>c.id!==cid?c:{...c,nt}));
   const [addOpen,setAddOpen]=useState(false);
-  const addClient=(f)=>{
+  const [inviteCoachOpen,setInviteCoachOpen]=useState(false);
+  const isOwner=profile?.role==="owner";
+  const inviteCoach=async(name,email)=>{
+    try{await db.invite({role:"coach",name,email});setInviteCoachOpen(false);await loadBackend();alert("Invite sent to "+email+". They'll get an email to set a password.");}
+    catch(e){alert("Couldn't invite coach: "+(e.message||e));}
+  };
+  const addClient=async(f)=>{
     const initials=(f.name.trim().split(" ").filter(Boolean).map(w=>w[0]).join("")||"CL").slice(0,2).toUpperCase();
     const accent=["#FF6B2C","#3AE0FF","#FF3A8E","#9EFF3A","#FFB23A"][clients.length%5];
+    if(hasBackend){
+      if(!f.email){alert("An email is required to invite an athlete.");return;}
+      try{
+        const res=await db.invite({role:"athlete",email:f.email,client:{name:f.name,initials,goal:f.goal,accent,bw:f.bw,block:f.block,totalWeeks:f.totalWeeks,lifts:{sq:f.sq,bn:f.bn,dl:f.dl}}});
+        setAddOpen(false);
+        await loadBackend();
+        if(res&&res.clientId){setClientId(res.clientId);setWeek(1);setView("builder");}
+        alert("Invite sent to "+f.email+". They'll get an email to set a password and log in.");
+      }catch(e){alert("Couldn't invite athlete: "+(e.message||e));}
+      return;
+    }
     const id="cl_"+Date.now();
     const coachId=(authCoach&&authCoach.id)||"co_adam";
     const c={id,coachId,name:f.name,initials,goal:f.goal,accent,bw:f.bw,block:f.block,totalWeeks:f.totalWeeks,currentWeek:1,adherence:1,lifts:{sq:f.sq,bn:f.bn,dl:f.dl},pin:f.pin||"",nt:{p:0,c:0,f:0,kcal:0},hab:{},streak:{},pillarTargets:{},email:f.email||""};
@@ -135,7 +153,7 @@ export default function App(){
   const removeDay=(dayId)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.filter(d=>d.id!==dayId)}}));
   const setPillarTarget=(cid,actId,text)=>setClients(p=>p.map(c=>c.id!==cid?c:{...c,pillarTargets:{...(c.pillarTargets||{}),[actId]:text}}));
 
-  useEffect(()=>{if(!hasBackend||!profile)return;if(profile.role==="coach"){setRole("coach");const c=coaches.find(x=>x.id===profile.coach_id);if(c)setAuthCoach(c);}else if(profile.role==="athlete"){setRole("client");const c=clients.find(x=>x.id===profile.client_id);if(c)setAuthClient(c);}},[profile,coaches,clients]);
+  useEffect(()=>{if(!hasBackend||!profile)return;if(profile.role==="coach"||profile.role==="owner"){setRole("coach");const c=coaches.find(x=>x.id===profile.coach_id);if(c)setAuthCoach(c);}else if(profile.role==="athlete"){setRole("client");const c=clients.find(x=>x.id===profile.client_id);if(c)setAuthClient(c);}},[profile,coaches,clients]);
 
   if(hasBackend&&(!session||!profile))return(<AuthGate onReady={(s,p)=>{setSession(s);setProfile(p);}}/>);
   if(!hydrated)return(<div style={{minHeight:"100vh",background:"#0B0B0C",color:"#807E76",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui,sans-serif",fontSize:13,letterSpacing:".08em",textTransform:"uppercase"}}>Loading…</div>);
@@ -183,9 +201,10 @@ export default function App(){
         {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} onEditEx={editEx} onSetWeeks={setWeeks} onAddEx={addEx} onRemoveEx={removeEx} onAdvanceWeek={advanceWeek}/>:emptyClient)}
         {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={addEx} onRemoveEx={removeEx} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)}/>:emptyClient)}
         {view==="library"&&<Library/>}
-        {view==="team"&&<Team coaches={coaches} clients={clients} onMoveClient={moveClient} onRemoveCoach={removeCoach} onAddCoach={addCoach}/>}
+        {view==="team"&&<Team coaches={coaches} clients={clients} onMoveClient={moveClient} onRemoveCoach={removeCoach} onAddCoach={addCoach} isOwner={isOwner} onInviteCoach={hasBackend&&isOwner?()=>setInviteCoachOpen(true):null}/>}
       </div>
     </div>
-    {addOpen&&<AddClient onAdd={addClient} onClose={()=>setAddOpen(false)}/>}
+    {addOpen&&<AddClient onAdd={addClient} onClose={()=>setAddOpen(false)} backend={hasBackend}/>}
+    {inviteCoachOpen&&<InviteCoach onInvite={inviteCoach} onClose={()=>setInviteCoachOpen(false)}/>}
   </div>);
 }

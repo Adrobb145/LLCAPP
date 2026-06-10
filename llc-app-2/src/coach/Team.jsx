@@ -2,14 +2,14 @@
 import { useState } from "react";
 import Avatar from "../shared/Avatar";
 
-export default function Team({coaches,clients,onMoveClient,onRemoveCoach,onAddCoach}){
+export default function Team({coaches,clients,onMoveClient,onRemoveCoach,onAddCoach,isOwner,onInviteCoach}){
   const [reassign,setReassign]=useState(null);
   const [reassignTo,setReassignTo]=useState("");
   const [newName,setNewName]=useState("");
   const others=id=>coaches.filter(c=>c.id!==id);
   return(<div className="team">
     <div className="rhead"><div><div className="kick" style={{marginBottom:8}}>Manage</div><div className="rtitle">Coaching Team</div><div className="rsub">{coaches.length} coaches · move clients or remove a coach</div></div></div>
-    <div style={{display:"flex",gap:8,marginBottom:16}}><input className="field" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="New coach name…" style={{flex:1,maxWidth:280}}/><button className="btn" onClick={()=>{if(newName.trim()){onAddCoach(newName.trim());setNewName("");}}}>+ Add Coach</button></div>
+    {onInviteCoach?(<div style={{display:"flex",gap:8,marginBottom:16}}><button className="btn" onClick={onInviteCoach}>＋ Invite Coach</button><span style={{alignSelf:"center",fontSize:11,color:"#807E76"}}>Owner only · sends an email invite</span></div>):(<div style={{display:"flex",gap:8,marginBottom:16}}><input className="field" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="New coach name…" style={{flex:1,maxWidth:280}}/><button className="btn" onClick={()=>{if(newName.trim()){onAddCoach(newName.trim());setNewName("");}}}>+ Add Coach</button></div>)}
     {coaches.map(co=>{const cc=clients.filter(c=>c.coachId===co.id);const removing=reassign===co.id;return(<div key={co.id} className="tcoach">
       <div className="tc-head"><Avatar txt={co.initials} c={co.accent} size={38}/><div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{co.name}</div><div style={{fontSize:10,color:co.accent}}>{co.role} · {cc.length} client{cc.length!==1?"s":""}</div></div>
         {coaches.length>1&&(removing?
