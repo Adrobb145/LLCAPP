@@ -131,6 +131,11 @@ export default function App(){
   };
   const [editId,setEditId]=useState(null);
   const editClient=(id,patch)=>{setClients(p=>p.map(c=>c.id===id?{...c,...patch}:c));setEditId(null);};
+  const stripClientLocal=(id)=>{const drop=(m)=>{const n={...m};delete n[id];return n;};setClients(p=>p.filter(c=>c.id!==id));setPrograms(drop);setLogs(drop);setNotes(drop);setMeals(drop);setGoals(drop);setCheckins(drop);setBodylog(drop);setPhotos(drop);setMisses(drop);setReadiness(drop);setPillaracts(drop);setAttendance(drop);setFormvids(drop);setXp(drop);setFreezes(drop);setCkday(drop);};
+  const removeClient=async(id)=>{
+    if(hasBackend){try{await db.deleteClient(id);}catch(e){alert("Couldn't delete: "+(e.message||e));return;}}
+    stripClientLocal(id);setEditId(null);setView("roster");
+  };
   const addFormVid=(cid,entry,url)=>{setFormvids(p=>({...p,[cid]:[entry,...(p[cid]||[])]}));setVidUrls(u=>({...u,[entry.id]:url}));};
   const reviewFormVid=(cid,id,feedback)=>{const v=(formvids[cid]||[]).find(x=>x.id===id);setFormvids(p=>({...p,[cid]:(p[cid]||[]).map(x=>x.id===id?{...x,feedback,status:"reviewed"}:x)}));onAddNote(cid,"🎥 Form review — "+(v?v.label:"your clip")+": "+feedback,"coach");};
 
