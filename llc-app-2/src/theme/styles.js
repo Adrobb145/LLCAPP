@@ -183,6 +183,27 @@ export const CSS=`
 .sel{background:#1A1A1D;border:1px solid #2A2A2F;border-radius:5px;color:#F5F4F0;font-family:inherit;font-size:11px;padding:4px 6px;outline:none;cursor:pointer;}
 ::-webkit-scrollbar{width:9px;height:9px;}
 ::-webkit-scrollbar-thumb{background:#232327;border:2px solid #0B0B0C;border-radius:5px;}
+
+/* ---------- mobile / iPhone ---------- */
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:100dvh;}
+  .sidebar{flex-direction:row;align-items:center;gap:8px;padding:8px 10px;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid #2A2A2F;}
+  .sidebar::-webkit-scrollbar{display:none;}
+  .sidebar>div{flex-shrink:0;}
+  .brand{padding:0 4px;}
+  .brand-sub{display:none;}
+  .sb-lbl{display:none;}
+  .sb-nav{flex-direction:row;gap:4px;}
+  .sb-item{width:auto;white-space:nowrap;padding:7px 11px;}
+  .sb-cl{display:none;}
+  .coachftr{margin:0;border-top:0;border-left:1px solid #2A2A2F;padding:0 0 0 10px;}
+  .coachftr>div{display:none;}
+  .pl{padding:16px 14px 90px;}
+  .rtitle{font-size:23px;}
+  .rhead{margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .cgrid{grid-template-columns:1fr;}
+  .topbar{padding:0 12px;padding-top:env(safe-area-inset-top,0);height:auto;min-height:50px;}
+}
 `;
 
 export const FONTS=`@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Archivo+Black&family=JetBrains+Mono:wght@400;500;600;700&display=swap');`;
