@@ -30,6 +30,18 @@ export async function setPassword(password) {
   if (error) throw error;
 }
 // Role-gated server-side invite (owner→coach, coach→athlete). Sends the email.
+export async function deleteClient(clientId) {
+  const { data, error } = await supabase.functions.invoke("purge", { body: { clientId } });
+  if (error) { let m = error.message; try { const b = await error.context.json(); if (b && b.error) m = b.error; } catch (e) {} throw new Error(m); }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+export async function deleteCoach(coachId) {
+  const { data, error } = await supabase.functions.invoke("purge", { body: { coachId } });
+  if (error) { let m = error.message; try { const b = await error.context.json(); if (b && b.error) m = b.error; } catch (e) {} throw new Error(m); }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
 export async function invite(payload) {
   const { data, error } = await supabase.functions.invoke("invite", { body: payload });
   if (error) {
