@@ -16,6 +16,7 @@ import CoachAuth from "./coach/CoachAuth";
 import Roster from "./coach/Roster";
 import AddClient from "./coach/AddClient";
 import InviteCoach from "./coach/InviteCoach";
+import EditClient from "./coach/EditClient";
 import CoachInsights from "./coach/CoachInsights";
 import SessionsTracker from "./coach/SessionsTracker";
 import ProgramBuilder from "./coach/ProgramBuilder";
@@ -128,6 +129,8 @@ export default function App(){
     setPillaracts(p=>({...p,[id]:{}}));
     setAddOpen(false);setClientId(id);setWeek(1);setView("builder");
   };
+  const [editId,setEditId]=useState(null);
+  const editClient=(id,patch)=>{setClients(p=>p.map(c=>c.id===id?{...c,...patch}:c));setEditId(null);};
   const addFormVid=(cid,entry,url)=>{setFormvids(p=>({...p,[cid]:[entry,...(p[cid]||[])]}));setVidUrls(u=>({...u,[entry.id]:url}));};
   const reviewFormVid=(cid,id,feedback)=>{const v=(formvids[cid]||[]).find(x=>x.id===id);setFormvids(p=>({...p,[cid]:(p[cid]||[]).map(x=>x.id===id?{...x,feedback,status:"reviewed"}:x)}));onAddNote(cid,"🎥 Form review — "+(v?v.label:"your clip")+": "+feedback,"coach");};
 
@@ -194,7 +197,7 @@ export default function App(){
         <button className="btn" onClick={()=>setView("library")}>＋ Exercise</button>
       </div>
       <div className="content">
-        {view==="roster"&&<Roster clients={clients} coaches={coaches} onOpen={openClient} onAddClient={()=>setAddOpen(true)}/>}
+        {view==="roster"&&<Roster clients={clients} coaches={coaches} onOpen={openClient} onAddClient={()=>setAddOpen(true)} onEdit={(c)=>setEditId(c.id)}/>}
         {view==="insights"&&<CoachInsights clients={clients} programs={programs} logs={logs} checkins={checkins} readiness={readiness} onOpen={openClient} onAddCheckin={(cid,ci)=>addCheckin(cid,ci)}/>}
         {view==="sessions"&&<SessionsTracker clients={clients} coaches={coaches} attendance={attendance} authCoach={authCoach} onAddSession={addSession} onToggleAttended={toggleAttended} onRemoveSession={removeSession}/>}
         {view==="builder"&&(client?<ProgramBuilder client={client} program={program} onEditEx={editEx} onAddEx={addEx} onRemoveEx={removeEx} onReorderEx={reorderEx} onRenameDay={renameDay} onSetDow={setDow} onAddDay={addDay} onRemoveDay={removeDay} onSetPillarTarget={setPillarTarget} onSetNutrition={setNutrition}/>:emptyClient)}
@@ -206,5 +209,6 @@ export default function App(){
     </div>
     {addOpen&&<AddClient onAdd={addClient} onClose={()=>setAddOpen(false)} backend={hasBackend}/>}
     {inviteCoachOpen&&<InviteCoach onInvite={inviteCoach} onClose={()=>setInviteCoachOpen(false)}/>}
+    {editId&&(()=>{const ec=clients.find(c=>c.id===editId);return ec?<EditClient client={ec} onSave={editClient} onClose={()=>setEditId(null)}/>:null;})()}
   </div>);
 }

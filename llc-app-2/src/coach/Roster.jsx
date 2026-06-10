@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Avatar from "../shared/Avatar";
 
-export default function Roster({clients,coaches,onOpen,onAddClient}){
+export default function Roster({clients,coaches,onOpen,onAddClient,onEdit}){
   const [q,setQ]=useState("");const [status,setStatus]=useState("all");const [sort,setSort]=useState("attention");
   const flagged=clients.filter(c=>c.adherence<.8).length;
   const avg=clients.length?Math.round(clients.reduce((a,c)=>a+c.adherence,0)/clients.length*100):0;
@@ -23,7 +23,7 @@ export default function Roster({clients,coaches,onOpen,onAddClient}){
     </div>
     <div style={{fontSize:11,color:"#807E76",marginBottom:12}}>{list.length} of {clients.length}</div>
     <div className="cgrid">{list.map(c=>{const co=coaches.find(x=>x.id===c.coachId);return(<div key={c.id} className="ccard" onClick={()=>onOpen(c.id)}><div className="ccard-ac" style={{background:c.accent}}/>
-      <div className="cc-head"><Avatar txt={c.initials} c={c.accent} size={36}/><div style={{flex:1,minWidth:0}}><div className="cc-name">{c.name}</div><div className="cc-goal">{c.goal}</div></div></div>
+      <div className="cc-head"><Avatar txt={c.initials} c={c.accent} size={36}/><div style={{flex:1,minWidth:0}}><div className="cc-name">{c.name}</div><div className="cc-goal">{c.goal}</div></div>{onEdit&&<button title="Edit info" onClick={e=>{e.stopPropagation();onEdit(c);}} style={{background:"none",border:"1px solid #2A2A2E",borderRadius:6,color:"#807E76",cursor:"pointer",fontSize:12,padding:"3px 7px",lineHeight:1}}>✎</button>}</div>
       <div className="cc-block"><span>{c.block}</span><span className="mono" style={{color:"#807E76"}}>W{c.currentWeek}/{c.totalWeeks}</span></div>
       <div className="cc-stats"><div><div className="ccs-l">Adherence</div><div className="ccs-v">{Math.round(c.adherence*100)}<span className="ccs-u">%</span></div><div className="abar"><div className="afill" style={{width:c.adherence*100+"%"}}/></div></div><div><div className="ccs-l">Body Wt</div><div className="ccs-v">{c.bw}<span className="ccs-u">lb</span></div></div><div><div className="ccs-l">Coach</div><div className="ccs-v" style={{fontSize:13,color:co?.accent}}>{co?.initials||"—"}</div></div></div>
     </div>);})}</div>
