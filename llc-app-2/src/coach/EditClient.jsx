@@ -5,7 +5,7 @@ import { D } from "../theme/tokens";
 
 const ACCENTS = ["#FF6B2C", "#3AE0FF", "#FF3A8E", "#9EFF3A", "#FFB23A", "#B98AFF"];
 
-export default function EditClient({ client, onSave, onClose }) {
+export default function EditClient({ client, onSave, onDelete, onClose }) {
   const [f, setF] = useState({
     name: client.name || "", goal: client.goal || "", bw: client.bw ?? "",
     block: client.block || "", totalWeeks: client.totalWeeks ?? 6, currentWeek: client.currentWeek ?? 1,
@@ -24,8 +24,6 @@ export default function EditClient({ client, onSave, onClose }) {
       lifts: { sq: Number(f.sq) || 0, bn: Number(f.bn) || 0, dl: Number(f.dl) || 0 },
       accent: f.accent,
     });
-  };
-
   const ov = { position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 };
   const card = { width: 460, maxWidth: "100%", background: D.card, border: `1px solid ${D.line}`, borderRadius: 12, padding: 22, maxHeight: "90vh", overflowY: "auto" };
   const lbl = { fontSize: 8.5, color: D.sub, letterSpacing: ".06em", textTransform: "uppercase", fontWeight: 700, marginBottom: 3, display: "block" };
@@ -65,7 +63,23 @@ export default function EditClient({ client, onSave, onClose }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {ACCENTS.map(a => (<button key={a} onClick={() => setF(p => ({ ...p, accent: a }))} style={{ width: 26, height: 26, borderRadius: 6, background: a, border: f.accent === a ? "2px solid #fff" : "2px solid transparent", cursor: "pointer" }} />))}
       </div>
-
+      
+{onDelete && (
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${D.line}` }}>
+          {!confirmDel ? (
+            <button onClick={() => setConfirmDel(true)} style={{ background: "transparent", border: "1px solid #FF4D4D55", color: "#FF6B6B", borderRadius: 7, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Delete athlete…</button>
+          ) : (
+            <div style={{ background: "#FF4D4D14", border: "1px solid #FF4D4D55", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 12.5, color: "#FF8A8A", fontWeight: 700, marginBottom: 4 }}>Permanently delete {client.name}?</div>
+              <div style={{ fontSize: 11.5, color: D.sub, lineHeight: 1.5, marginBottom: 10 }}>This erases all of their saved data from the server and removes their login. This cannot be undone.</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setConfirmDel(false)} className="btn sec" style={{ flex: 1 }}>Keep</button>
+                <button onClick={() => onDelete(client.id)} style={{ flex: 1, background: "#FF4D4D", color: "#fff", border: 0, borderRadius: 7, padding: "9px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Delete everything</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}      
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button className="btn sec" onClick={onClose}>Cancel</button>
         <button className="btn" disabled={!canSave} style={{ opacity: canSave ? 1 : .5 }} onClick={save}>Save changes</button>
