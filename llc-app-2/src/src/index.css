@@ -1,0 +1,8 @@
+/* src/index.css */
+:root{
+  --bg:#0B0B0C; --card:#131315; --line:#2A2A2F; --ink:#F5F4F0;
+  --sub:#807E76; --acc:#FF6B2C; --good:#3AE07A; --lift:#1A1A1D;
+}
+*{box-sizing:border-box;}
+html,body,#root{height:100%;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter Tight',system-ui,sans-serif;}
