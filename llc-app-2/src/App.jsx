@@ -202,7 +202,7 @@ export default function App(){
         <button className="btn" onClick={()=>setView("library")}>＋ Exercise</button>
       </div>
       <div className="content">
-        {view==="roster"&&<Roster clients={clients} coaches={coaches} onOpen={openClient} onAddClient={()=>setAddOpen(true)} onEdit={(c)=>setEditId(c.id)}/>}
+        {view==="roster"&&<Roster clients={clients} coaches={coaches} onOpen={openClient} onAddClient={()=>setAddOpen(true)} onEdit={(c)=>setEditId(c.id)} onDelete={removeClient}/>}
         {view==="insights"&&<CoachInsights clients={clients} programs={programs} logs={logs} checkins={checkins} readiness={readiness} onOpen={openClient} onAddCheckin={(cid,ci)=>addCheckin(cid,ci)}/>}
         {view==="sessions"&&<SessionsTracker clients={clients} coaches={coaches} attendance={attendance} authCoach={authCoach} onAddSession={addSession} onToggleAttended={toggleAttended} onRemoveSession={removeSession}/>}
         {view==="builder"&&(client?<ProgramBuilder client={client} program={program} onEditEx={editEx} onAddEx={addEx} onRemoveEx={removeEx} onReorderEx={reorderEx} onRenameDay={renameDay} onSetDow={setDow} onAddDay={addDay} onRemoveDay={removeDay} onSetPillarTarget={setPillarTarget} onSetNutrition={setNutrition}/>:emptyClient)}
@@ -214,6 +214,6 @@ export default function App(){
     </div>
     {addOpen&&<AddClient onAdd={addClient} onClose={()=>setAddOpen(false)} backend={hasBackend}/>}
     {inviteCoachOpen&&<InviteCoach onInvite={inviteCoach} onClose={()=>setInviteCoachOpen(false)}/>}
-    {editId&&(()=>{const ec=clients.find(c=>c.id===editId);return ec?<EditClient client={ec} onSave={editClient} onClose={()=>setEditId(null)}/>:null;})()}
+    {editId&&(()=>{const ec=clients.find(c=>c.id===editId);return ec?<EditClient client={ec} onSave={editClient} onDelete={removeClient} onClose={()=>setEditId(null)}/>:null;})()}
   </div>);
 }
