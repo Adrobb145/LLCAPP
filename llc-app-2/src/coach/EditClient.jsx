@@ -12,6 +12,7 @@ export default function EditClient({ client, onSave, onDelete, onClose }) {
     sq: client.lifts?.sq ?? "", bn: client.lifts?.bn ?? "", dl: client.lifts?.dl ?? "",
     accent: client.accent || ACCENTS[0],
   });
+  const [confirmDel, setConfirmDel] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
   const canSave = f.name.trim().length > 1;
 
@@ -24,6 +25,9 @@ export default function EditClient({ client, onSave, onDelete, onClose }) {
       lifts: { sq: Number(f.sq) || 0, bn: Number(f.bn) || 0, dl: Number(f.dl) || 0 },
       accent: f.accent,
     });
+    onClose();
+  };
+
   const ov = { position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 };
   const card = { width: 460, maxWidth: "100%", background: D.card, border: `1px solid ${D.line}`, borderRadius: 12, padding: 22, maxHeight: "90vh", overflowY: "auto" };
   const lbl = { fontSize: 8.5, color: D.sub, letterSpacing: ".06em", textTransform: "uppercase", fontWeight: 700, marginBottom: 3, display: "block" };
@@ -63,8 +67,8 @@ export default function EditClient({ client, onSave, onDelete, onClose }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {ACCENTS.map(a => (<button key={a} onClick={() => setF(p => ({ ...p, accent: a }))} style={{ width: 26, height: 26, borderRadius: 6, background: a, border: f.accent === a ? "2px solid #fff" : "2px solid transparent", cursor: "pointer" }} />))}
       </div>
-      
-{onDelete && (
+
+      {onDelete && (
         <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${D.line}` }}>
           {!confirmDel ? (
             <button onClick={() => setConfirmDel(true)} style={{ background: "transparent", border: "1px solid #FF4D4D55", color: "#FF6B6B", borderRadius: 7, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Delete athlete…</button>
@@ -79,8 +83,9 @@ export default function EditClient({ client, onSave, onDelete, onClose }) {
             </div>
           )}
         </div>
-      )}      
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      )}
+
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
         <button className="btn sec" onClick={onClose}>Cancel</button>
         <button className="btn" disabled={!canSave} style={{ opacity: canSave ? 1 : .5 }} onClick={save}>Save changes</button>
       </div>
@@ -88,3 +93,4 @@ export default function EditClient({ client, onSave, onDelete, onClose }) {
     </div>
   </div>);
 }
+
