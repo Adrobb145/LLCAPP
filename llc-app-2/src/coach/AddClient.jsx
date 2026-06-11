@@ -5,10 +5,11 @@ import { useState } from "react";
 import { D } from "../theme/tokens";
 
 export default function AddClient({ onAdd, onClose, backend }) {
-  const [f, setF] = useState({ name: "", email: "", goal: "", bw: "", block: "Foundation", totalWeeks: 6, sq: "", bn: "", dl: "", pin: "" });
+  const genTemp = () => "DNA-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+  const [f, setF] = useState(() => ({ name: "", email: "", goal: "", bw: "", block: "Foundation", totalWeeks: 6, sq: "", bn: "", dl: "", pin: "", temppw: genTemp() }));
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
-  const canSave = f.name.trim().length > 1 && (!backend || /\S+@\S+\.\S+/.test(f.email));
+  const canSave = f.name.trim().length > 1 && (!backend || (/\S+@\S+\.\S+/.test(f.email) && f.temppw.trim().length >= 6));
 
   const save = async () => {
     if (!canSave || busy) return;   // guard: ignore double-clicks while an invite is in flight
@@ -18,6 +19,7 @@ export default function AddClient({ onAdd, onClose, backend }) {
         name: f.name.trim(), email: f.email.trim(), goal: f.goal.trim() || "General strength",
         bw: Number(f.bw) || 0, block: f.block.trim() || "Foundation", totalWeeks: Number(f.totalWeeks) || 6,
         sq: Number(f.sq) || 135, bn: Number(f.bn) || 95, dl: Number(f.dl) || 185, pin: f.pin.trim(),
+        tempPassword: f.temppw.trim(),
       });
     } finally {
       // On success the modal unmounts; on failure it stays open and the button re-enables for a retry.
@@ -41,6 +43,7 @@ export default function AddClient({ onAdd, onClose, backend }) {
 
       <label style={lbl}>Full name *</label><input style={inp} value={f.name} onChange={set("name")} placeholder="Jane Doe" />
       <label style={lbl}>Email — how the athlete signs up & links their account</label><input style={inp} type="email" value={f.email} onChange={set("email")} placeholder="jane@email.com" />
+      {backend && (<><label style={lbl}>Temp password — you share this with the athlete for first login</label><input style={inp} value={f.temppw} onChange={set("temppw")} placeholder="6+ characters" /></>)}
       <label style={lbl}>Goal</label><input style={inp} value={f.goal} onChange={set("goal")} placeholder="Build strength, first meet…" />
 
       <div style={{ display: "flex", gap: 10 }}>
@@ -62,7 +65,8 @@ export default function AddClient({ onAdd, onClose, backend }) {
         <button className="btn sec" onClick={onClose} disabled={busy}>Cancel</button>
         <button className="btn" disabled={!canSave || busy} style={{ opacity: (canSave && !busy) ? 1 : .5 }} onClick={save}>{busy ? "Sending…" : (backend ? "Send Invite" : "Add Client")}</button>
       </div>
-      <div style={{ fontSize: 11, color: D.sub, marginTop: 12, lineHeight: 1.5 }}>{backend ? "An email invite is sent to the athlete to set a password and log in. A starter program is generated from the lifts above — edit it in Build Day." : "A 3-day starter program is generated from the lifts above — edit it in Build Day."}</div>
+      <div style={{ fontSize: 11, color: D.sub, marginTop: 12, lineHeight: 1.5 }}>{backend ? "The athlete signs in with the email + temp password above — no email is sent automatically, you share the password with them. A starter program is generated from the lifts above — edit it in Build Day." : "A 3-day starter program is generated from the lifts above — edit it in Build Day."}</div>
     </div>
   </div>);
 }
+
