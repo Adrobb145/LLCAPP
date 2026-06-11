@@ -130,7 +130,7 @@ export default function App(){
     setAddOpen(false);setClientId(id);setWeek(1);setView("builder");
   };
   const [editId,setEditId]=useState(null);
-  const const editClient=(id,patch)=>setClients(p=>p.map(c=>c.id===id?{...c,...patch}:c));
+  const editClient=(id,patch)=>setClients(p=>p.map(c=>c.id===id?{...c,...patch}:c));
   const stripClientLocal=(id)=>{const drop=(m)=>{const n={...m};delete n[id];return n;};setClients(p=>p.filter(c=>c.id!==id));setPrograms(drop);setLogs(drop);setNotes(drop);setMeals(drop);setGoals(drop);setCheckins(drop);setBodylog(drop);setPhotos(drop);setMisses(drop);setReadiness(drop);setPillaracts(drop);setAttendance(drop);setFormvids(drop);setXp(drop);setFreezes(drop);setCkday(drop);};
   const removeClient=async(id)=>{
     if(hasBackend){try{await db.deleteClient(id);}catch(e){alert("Couldn't delete: "+(e.message||e));return;}}
