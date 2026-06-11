@@ -111,11 +111,12 @@ export default function App(){
     if(hasBackend){
       if(!f.email){alert("An email is required to invite an athlete.");return;}
       try{
-        const res=await db.invite({role:"athlete",email:f.email,client:{name:f.name,initials,goal:f.goal,accent,bw:f.bw,block:f.block,totalWeeks:f.totalWeeks,lifts:{sq:f.sq,bn:f.bn,dl:f.dl}}});
+        const res=await db.invite({role:"athlete",email:f.email,tempPassword:f.tempPassword,client:{name:f.name,initials,goal:f.goal,accent,bw:f.bw,block:f.block,totalWeeks:f.totalWeeks,lifts:{sq:f.sq,bn:f.bn,dl:f.dl}}});
         setAddOpen(false);
         await loadBackend();
         if(res&&res.clientId){setClientId(res.clientId);setWeek(1);setView("builder");}
-        alert("Invite sent to "+f.email+". They'll get an email to set a password and log in.");
+        const pw=(res&&res.tempPassword)?res.tempPassword:(f.tempPassword||"");
+        alert("Athlete account created ✅\n\nSend them these login details:\n\nEmail:  "+f.email+"\nPassword:  "+pw+"\n\nSave it somewhere — it's their login. No email is sent automatically.");
       }catch(e){alert("Couldn't invite athlete: "+(e.message||e));}
       return;
     }
