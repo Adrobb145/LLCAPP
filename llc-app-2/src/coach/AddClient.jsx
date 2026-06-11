@@ -6,16 +6,23 @@ import { D } from "../theme/tokens";
 
 export default function AddClient({ onAdd, onClose, backend }) {
   const [f, setF] = useState({ name: "", email: "", goal: "", bw: "", block: "Foundation", totalWeeks: 6, sq: "", bn: "", dl: "", pin: "" });
+  const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
   const canSave = f.name.trim().length > 1 && (!backend || /\S+@\S+\.\S+/.test(f.email));
 
-  const save = () => {
-    if (!canSave) return;
-    onAdd({
-      name: f.name.trim(), email: f.email.trim(), goal: f.goal.trim() || "General strength",
-      bw: Number(f.bw) || 0, block: f.block.trim() || "Foundation", totalWeeks: Number(f.totalWeeks) || 6,
-      sq: Number(f.sq) || 135, bn: Number(f.bn) || 95, dl: Number(f.dl) || 185, pin: f.pin.trim(),
-    });
+  const save = async () => {
+    if (!canSave || busy) return;   // guard: ignore double-clicks while an invite is in flight
+    setBusy(true);
+    try {
+      await onAdd({
+        name: f.name.trim(), email: f.email.trim(), goal: f.goal.trim() || "General strength",
+        bw: Number(f.bw) || 0, block: f.block.trim() || "Foundation", totalWeeks: Number(f.totalWeeks) || 6,
+        sq: Number(f.sq) || 135, bn: Number(f.bn) || 95, dl: Number(f.dl) || 185, pin: f.pin.trim(),
+      });
+    } finally {
+      // On success the modal unmounts; on failure it stays open and the button re-enables for a retry.
+      setBusy(false);
+    }
   };
 
   const ov = { position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 };
@@ -25,11 +32,11 @@ export default function AddClient({ onAdd, onClose, backend }) {
   const num = { ...inp, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" };
   const Field = ({ k, label, type = "text", ph = "" }) => (<div style={{ flex: 1 }}><label style={lbl}>{label}</label><input style={inp} type={type} value={f[k]} onChange={set(k)} placeholder={ph} /></div>);
 
-  return (<div style={ov} onClick={onClose}>
+  return (<div style={ov} onClick={busy ? undefined : onClose}>
     <div style={card} onClick={(e) => e.stopPropagation()}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
         <div><div style={{ fontSize: 9, color: D.acc, letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700 }}>New Client</div><div style={{ fontFamily: "'Archivo Black',sans-serif", fontSize: 19 }}>Add to Roster</div></div>
-        <button onClick={onClose} style={{ marginLeft: "auto", background: "none", border: 0, color: D.sub, fontSize: 20, cursor: "pointer" }}>✕</button>
+        <button onClick={onClose} disabled={busy} style={{ marginLeft: "auto", background: "none", border: 0, color: D.sub, fontSize: 20, cursor: busy ? "default" : "pointer", opacity: busy ? .4 : 1 }}>✕</button>
       </div>
 
       <label style={lbl}>Full name *</label><input style={inp} value={f.name} onChange={set("name")} placeholder="Jane Doe" />
@@ -52,10 +59,10 @@ export default function AddClient({ onAdd, onClose, backend }) {
       <label style={lbl}>Demo PIN (optional — only used in offline demo mode)</label><input style={inp} value={f.pin} onChange={set("pin")} placeholder="e.g. 7777" maxLength={4} />
 
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
-        <button className="btn sec" onClick={onClose}>Cancel</button>
-        <button className="btn" disabled={!canSave} style={{ opacity: canSave ? 1 : .5 }} onClick={save}>{backend?"Send Invite":"Add Client"}</button>
+        <button className="btn sec" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn" disabled={!canSave || busy} style={{ opacity: (canSave && !busy) ? 1 : .5 }} onClick={save}>{busy ? "Sending…" : (backend ? "Send Invite" : "Add Client")}</button>
       </div>
-      <div style={{ fontSize: 11, color: D.sub, marginTop: 12, lineHeight: 1.5 }}>{backend?"An email invite is sent to the athlete to set a password and log in. A starter program is generated from the lifts above — edit it in Build Day.":"A 3-day starter program is generated from the lifts above — edit it in Build Day."}</div>
+      <div style={{ fontSize: 11, color: D.sub, marginTop: 12, lineHeight: 1.5 }}>{backend ? "An email invite is sent to the athlete to set a password and log in. A starter program is generated from the lifts above — edit it in Build Day." : "A 3-day starter program is generated from the lifts above — edit it in Build Day."}</div>
     </div>
   </div>);
 }
