@@ -18,9 +18,11 @@ import FormReviewClient from "./FormReviewClient";
 import AthCheckin from "./AthCheckin";
 import WeeklyRecap from "./WeeklyRecap";
 import { askClaude } from "../lib/ai";
+import Profile from "../shared/Profile";
 
 export default function ClientApp({client,program,clogs,meals,notes,goals,bodylog,checkins,xp,coachName,onToggleHabit,onLogMeal,onSaveSession,onXP,onAddCheckin,onSaveGoals,onLogBody,onSendChat,onAIReply,photos,freezes,ckday,onAddPhoto,onUseFreeze,onSetCkday,misses,onLogMiss,onLogReadiness,onLogout,pillaracts={},onSetAct,formvids=[],vidUrls={},onAddFormVid}){
   const [tab,setTab]=useState("home");
+  const [profileOpen,setProfileOpen]=useState(false);
   const [run,setRun]=useState(null);
   const [mealOpen,setMealOpen]=useState(false);
   const [mf,setMf]=useState({name:"",p:"",c:"",f:""});
@@ -80,7 +82,8 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
     <div style={{padding:"16px 16px 8px",display:"flex",alignItems:"center",gap:11}}>
       <span style={{width:44,height:44,borderRadius:"50%",background:client.accent,color:"#0B0B0C",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:15}}>{client.initials}</span>
       <div style={{flex:1}}><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:18,lineHeight:1}}>{client.name.split(" ")[0]}</div><div style={{fontSize:10,color:D.sub,marginTop:3}}>Lvl {lvlOf(xp)} · {rankOf(xp)} · {client.block}</div></div>
-      <button onClick={onLogout} style={{background:D.card,border:`1px solid ${D.line}`,color:D.sub,borderRadius:6,padding:"6px 9px",cursor:"pointer",fontSize:10,fontWeight:700}}>Exit</button>
+      <button onClick={()=>setProfileOpen(true)} style={{background:D.card,border:`1px solid ${D.line}`,color:D.sub,borderRadius:6,padding:"6px 9px",cursor:"pointer",fontSize:11,fontWeight:700,marginRight:6}}>Profile</button>
+      <button onClick={onLogout} style={{background:D.card,border:`1px solid ${D.line}`,color:D.sub,borderRadius:6,padding:"6px 9px",cursor:"pointer",fontSize:11,fontWeight:700}}>Exit</button>
     </div>
 
     <div style={{padding:"0 16px"}}>
@@ -246,5 +249,6 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
 
     {ciOpen&&<AthCheckin onClose={()=>setCiOpen(false)} onSave={v=>{onAddCheckin({date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"}),...v});onXP(75);setCiOpen(false);pop("📋 Check-in sent to coach · +75 XP");}}/>}
     {recapOpen&&<WeeklyRecap client={client} program={program} clogs={clogs} bodylog={bodylog} misses={misses} stats={stats} cw={cw} onSend={t=>{onSendChat(t);pop("📈 Recap sent to your coach");}} onClose={()=>setRecapOpen(false)}/>}
+    {profileOpen&&<Profile name={client.name} email={client.email||""} onClose={()=>setProfileOpen(false)}/>}
   </div>);
 }
