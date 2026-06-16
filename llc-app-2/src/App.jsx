@@ -9,6 +9,7 @@ import { EX } from "./constants/exercises";
 import { analyze } from "./lib/analytics";
 import { CSS } from "./theme/styles";
 import Avatar from "./shared/Avatar";
+import Profile from "./shared/Profile";
 import RolePicker from "./athlete/RolePicker";
 import ClientAuth from "./athlete/ClientAuth";
 import ClientApp from "./athlete/ClientApp";
@@ -99,6 +100,7 @@ export default function App(){
   const logReadiness=(cid,rec)=>setReadiness(p=>({...p,[cid]:[...(p[cid]||[]),rec]}));
   const setNutrition=(cid,nt)=>setClients(p=>p.map(c=>c.id!==cid?c:{...c,nt}));
   const [addOpen,setAddOpen]=useState(false);
+  const [profileOpen,setProfileOpen]=useState(false);
   const [inviteCoachOpen,setInviteCoachOpen]=useState(false);
   const isOwner=profile?.role==="owner";
   const inviteCoach=async(name,email)=>{
@@ -195,7 +197,7 @@ export default function App(){
         <button className="sb-item" data-on={view==="team"} onClick={()=>setView("team")}>🏢 Team<span className="sb-item-ct">{coaches.length}</span></button>
       </div></div>
       <div><div className="sb-lbl">Clients</div><div className="sb-cl">{clients.map(c=>{const fvp=(formvids[c.id]||[]).some(v=>v.status!=="reviewed");return(<button key={c.id} className="sb-clrow" data-on={(view==="sheet"||view==="planner"||view==="builder")&&clientId===c.id} onClick={()=>openClient(c.id)}><Avatar txt={c.initials} c={c.accent} size={22}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name.split(" ")[0]}</span>{fvp&&<span title="Form review pending" style={{marginLeft:"auto",fontSize:10}}>🎥</span>}<span style={{marginLeft:fvp?6:"auto",width:6,height:6,borderRadius:"50%",background:c.adherence>.85?"#3AE07A":c.adherence>.7?"#FFB23A":"#54534D"}}/></button>);})}</div></div>
-      <div className="coachftr"><Avatar txt={authCoach?.initials||"?"} c={authCoach?.accent||"#FF6B2C"} size={28} /><div style={{flex:1}}><div style={{fontSize:12,fontWeight:600}}>{authCoach?.name||"—"}</div><div style={{fontSize:9.5,color:"#807E76"}}>{authCoach?.role}</div></div><button className="btn gho sm" onClick={doLogout} title="Log out">Log out</button></div>
+      <div className="coachftr"><Avatar txt={authCoach?.initials||"?"} c={authCoach?.accent||"#FF6B2C"} size={28} /><div style={{flex:1}}><div style={{fontSize:12,fontWeight:600}}>{authCoach?.name||"—"}</div><div style={{fontSize:9.5,color:"#807E76"}}>{authCoach?.role}</div></div><button className="btn gho sm" onClick={()=>setProfileOpen(true)} title="Profile" style={{marginRight:6}}>Profile</button><button className="btn gho sm" onClick={doLogout} title="Log out">Log out</button></div>
     </div>
     <div className="main">
       <div className="topbar"><div className="crumbs">{crumbs.map((c,i)=>(<span key={i} style={{display:"contents"}}>{i>0&&<span className="sep">/</span>}{i===crumbs.length-1?<b>{c}</b>:<span>{c}</span>}</span>))}</div><div style={{flex:1}}/>
@@ -216,5 +218,6 @@ export default function App(){
     {addOpen&&<AddClient onAdd={addClient} onClose={()=>setAddOpen(false)} backend={hasBackend}/>}
     {inviteCoachOpen&&<InviteCoach onInvite={inviteCoach} onClose={()=>setInviteCoachOpen(false)}/>}
     {editId&&(()=>{const ec=clients.find(c=>c.id===editId);return ec?<EditClient client={ec} onSave={editClient} onDelete={removeClient} onClose={()=>setEditId(null)}/>:null;})()}
+    {profileOpen&&<Profile name={authCoach?.name||""} email={session?.user?.email||profile?.email||""} onClose={()=>setProfileOpen(false)}/>}
   </div>);
 }
