@@ -5,7 +5,7 @@ export const lvlPct=xp=>Math.round(((xp||0)%LVLSTEP)/LVLSTEP*100);
 export const toNext=xp=>LVLSTEP-((xp||0)%LVLSTEP);
 export const RANKS=["Rookie","Builder","Grinder","Athlete","Warrior","Beast","Elite","Legend","Icon"];
 export const rankOf=xp=>RANKS[Math.min(RANKS.length-1,lvlOf(xp)-1)];
-export const MAINLIFTS=["Back Squat","Barbell Bench Press","Conventional Deadlift","Overhead Press","Barbell Row","Front Squat"];
+export const MAINLIFTS=["Back Squat","Barbell Bench Press","Conventional Deadlift","Overhead Press","Barbell Row","Front Squat","Power Clean","Squat Clean","Snatch","Overhead Squat","Clean and Jerk","Push Jerk"];
 export const VERSES=[
   ["Philippians 4:13","Strength for this set isn't self-made. Show up — finish what you started."],
   ["1 Corinthians 9:27","Discipline the body. Not from shame — from purpose."],
