@@ -258,7 +258,15 @@ Child's Pose|mobility|bodyweight|beg|spine
 Downward Dog|mobility|bodyweight|beg|posterior chain
 Spiderman Lunge|mobility|bodyweight|beg|hips
 Scapular Wall Slide|mobility|bodyweight|beg|shoulders
-Wrist Mobility Flow|mobility|bodyweight|beg|wrists`;
+Wrist Mobility Flow|mobility|bodyweight|beg|wrists
+Power Clean|pull|barbell|adv|traps,glutes
+Hang Power Clean|pull|barbell|adv|traps,glutes
+Squat Clean|pull|barbell|adv|quads,traps
+Snatch|pull|barbell|adv|shoulders,glutes
+Power Snatch|pull|barbell|adv|shoulders,glutes
+Overhead Squat|squat|barbell|adv|quads,shoulders
+Clean and Jerk|pull|barbell|adv|traps,shoulders
+Push Jerk|push|barbell|adv|shoulders,triceps`;
 const LV={beg:"beginner",int:"intermediate",adv:"advanced"};
 export const EX=_EX.split("\n").map((l,i)=>{const[n,p,e,lv,m]=l.split("|");return{id:"e"+i,n,p,e,lv:LV[lv],m:m.split(",")};});
 export const EXBYID=Object.fromEntries(EX.map(e=>[e.id,e]));
