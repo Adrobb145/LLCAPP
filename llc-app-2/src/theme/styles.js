@@ -19,7 +19,10 @@ export const CSS=`
 .sb-clrow:hover{background:#1A1A1D;color:#F5F4F0;}
 .sb-clrow[data-on="true"]{background:#232327;color:#F5F4F0;}
 .av{border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
-.coachftr{margin-top:auto;padding:10px 8px 0;border-top:1px solid #2A2A2F;display:flex;align-items:center;gap:9px;}
+.coachftr{margin-top:auto;padding:10px 8px 0;border-top:1px solid #2A2A2F;display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+.cf-id{display:flex;align-items:center;gap:9px;min-width:0;}
+.cf-btns{display:flex;gap:6px;}
+.cf-btns>.btn{flex:1;}
 .main{display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 .topbar{height:50px;border-bottom:1px solid #2A2A2F;display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;}
 .crumbs{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#807E76;}
@@ -212,8 +215,8 @@ export const CSS=`
   .sb-nav{flex-direction:row;gap:4px;}
   .sb-item{width:auto;white-space:nowrap;padding:7px 11px;}
   .sb-cl{display:none;}
-  .coachftr{margin:0;border-top:0;border-left:1px solid #2A2A2F;padding:0 0 0 10px;}
-  .coachftr>div{display:none;}
+  .coachftr{margin:0;border-top:0;border-left:1px solid #2A2A2F;padding:0 0 0 10px;flex-direction:row;align-items:center;}
+  .coachftr .cf-id{display:none;}
   .roster,.lib,.pl,.team{padding:16px 14px 90px;}
   .rtitle{font-size:23px;}
   .rhead{margin-bottom:16px;flex-wrap:wrap;gap:10px;}
