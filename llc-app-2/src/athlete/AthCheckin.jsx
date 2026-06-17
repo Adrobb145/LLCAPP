@@ -5,8 +5,8 @@ import { D } from "../theme/tokens";
 export default function AthCheckin({onSave,onClose}){
   const [v,setV]=useState({energy:6,sleep:6,stress:5,nutrition:6,mood:6,note:""});
   const F=[["energy","Energy"],["sleep","Sleep quality"],["stress","Stress (high = worse)"],["nutrition","Nutrition"],["mood","Mood"]];
-  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:60}} onClick={onClose}>
-    <div onClick={e=>e.stopPropagation()} style={{background:D.card,borderTop:`3px solid ${D.acc}`,borderRadius:"16px 16px 0 0",padding:18,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}}>
+  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:20}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{background:D.card,border:`1px solid ${D.line}`,borderTop:`3px solid ${D.acc}`,borderRadius:16,padding:18,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}}>
       <div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:17,marginBottom:3}}>WEEKLY CHECK-IN</div>
       <div style={{fontSize:11,color:D.sub,marginBottom:14}}>Honest beats impressive. Your coach sees this.</div>
       {F.map(([k,l])=>(<div key={k} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:5}}><span style={{color:D.sub}}>{l}</span><span style={{fontFamily:"'JetBrains Mono',monospace",color:D.acc,fontWeight:700}}>{v[k]}/10</span></div><input type="range" min="1" max="10" value={v[k]} onChange={e=>setV({...v,[k]:Number(e.target.value)})} style={{width:"100%",accentColor:D.acc}}/></div>))}
