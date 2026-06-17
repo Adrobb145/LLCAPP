@@ -153,7 +153,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
           <PillarRadar values={radar} size={230}/>
           <div style={{fontSize:11,color:D.sub,textAlign:"center",marginTop:2,lineHeight:1.5}}>A strong life is a balanced one. Fill every axis — don't max one pillar and starve the rest.</div>
         </div>
-        {PILLARS.map(p=>{const total=p.actions.length;const fullByHab=client.hab&&client.hab[p.id]&&Object.keys(tActs[p.id]||{}).length===0;const acts=tActs[p.id]||{};const done=fullByHab?total:Object.keys(acts).length;const complete=done>=total;const open=openP===p.id;const st=(client.streak&&client.streak[p.id])||0;return(
+        {PILLARS.map(p=>{const total=p.actions.length;const acts=tActs[p.id]||{};const done=Object.keys(acts).length;const complete=done>=total;const open=openP===p.id;const st=(client.streak&&client.streak[p.id])||0;return(
           <div key={p.id} style={{background:D.card,border:`1px solid ${complete?p.color+"66":D.line}`,borderLeft:`3px solid ${p.color}`,borderRadius:11,overflow:"hidden"}}>
             <div onClick={()=>setOpenP(open?null:p.id)} style={{padding:"12px 13px",display:"flex",alignItems:"center",gap:11,cursor:"pointer"}}>
               <span style={{fontSize:22,filter:complete?"none":"grayscale(.4)"}}>{p.icon}</span>
@@ -163,7 +163,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
             </div>
             {open&&<div style={{padding:"0 13px 13px"}}>
               <div style={{fontSize:12.5,color:D.ink,lineHeight:1.5,marginBottom:10}}>{p.why}</div>
-              {p.actions.map(a=>{const on=fullByHab||acts[a.id];return(<div key={a.id} onClick={()=>handleAct(p.id,a.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 11px",background:on?p.color+"18":D.lift,border:`1px solid ${on?p.color+"55":D.line}`,borderRadius:8,marginBottom:6,cursor:"pointer"}}>
+              {p.actions.map(a=>{const on=!!acts[a.id];return(<div key={a.id} onClick={()=>handleAct(p.id,a.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 11px",background:on?p.color+"18":D.lift,border:`1px solid ${on?p.color+"55":D.line}`,borderRadius:8,marginBottom:6,cursor:"pointer"}}>
                 <span style={{width:20,height:20,borderRadius:5,border:`1px solid ${on?p.color:D.line}`,background:on?p.color:"transparent",color:"#0B0B0C",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>{on?"✓":""}</span>
                 <span style={{fontSize:12.5,color:on?D.ink:D.sub}}>{(client.pillarTargets&&client.pillarTargets[a.id])||a.label}</span>
               </div>);})}
