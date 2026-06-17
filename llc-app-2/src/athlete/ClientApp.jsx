@@ -3,7 +3,8 @@ import { useState, useMemo } from "react";
 import { isDeload, e1rm } from "../lib/training";
 import { athStats } from "../lib/analytics";
 import { compressImg } from "../lib/media";
-import { EXBYID } from "../constants/exercises";
+import { EXBYID, ID } from "../constants/exercises";
+import ExercisePicker from "../shared/ExercisePicker";
 import { PILL, PILLARS } from "../constants/pillars";
 import { modOf, MODBYID } from "../constants/modalities";
 import { lvlOf, lvlPct, toNext, rankOf, verseToday, MAINLIFTS, BADGES } from "../constants/gamification";
@@ -20,9 +21,15 @@ import WeeklyRecap from "./WeeklyRecap";
 import { askClaude } from "../lib/ai";
 import Profile from "../shared/Profile";
 
-export default function ClientApp({client,program,clogs,meals,notes,goals,bodylog,checkins,xp,coachName,onToggleHabit,onLogMeal,onSaveSession,onXP,onAddCheckin,onSaveGoals,onLogBody,onSendChat,onAIReply,photos,freezes,ckday,onAddPhoto,onUseFreeze,onSetCkday,misses,onLogMiss,onLogReadiness,onLogout,pillaracts={},onSetAct,formvids=[],vidUrls={},onAddFormVid}){
+const LIFTCOLORS=["#FF6B2C","#3AE0FF","#A78BFA","#3AE07A","#FFD23A","#FF5DA2","#5B8CFF"];
+const SHORT={"Back Squat":"Squat","Barbell Bench Press":"Bench","Conventional Deadlift":"Deadlift","Overhead Press":"Press","Power Clean":"Clean","Squat Clean":"Sq Clean","Overhead Squat":"OHS","Clean and Jerk":"C&J","Push Jerk":"Jerk","Front Squat":"F.Squat","Barbell Row":"Row","Snatch":"Snatch","Power Snatch":"P.Snatch","Hang Power Clean":"Hang Cl"};
+const shortName=n=>SHORT[n]||n;
+const DEFAULT_LIFTS=["Back Squat","Barbell Bench Press","Conventional Deadlift","Overhead Press","Power Clean"].map(ID).filter(Boolean);
+export default function ClientApp({client,program,clogs,meals,notes,goals,bodylog,checkins,xp,coachName,onToggleHabit,onLogMeal,onSaveSession,onXP,onAddCheckin,onSaveGoals,onLogBody,onSendChat,onAIReply,photos,freezes,ckday,onAddPhoto,onUseFreeze,onSetCkday,misses,onLogMiss,onLogReadiness,onLogout,pillaracts={},onSetAct,formvids=[],vidUrls={},onAddFormVid,trackedLifts=[],onSetTracked}){
   const [tab,setTab]=useState("home");
   const [profileOpen,setProfileOpen]=useState(false);
+  const [editLifts,setEditLifts]=useState(false);
+  const [pickLift,setPickLift]=useState(false);
   const [run,setRun]=useState(null);
   const [mealOpen,setMealOpen]=useState(false);
   const [mf,setMf]=useState({name:"",p:"",c:"",f:""});
@@ -66,6 +73,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
 
   const verse=verseToday();
   const lastBw=bodylog.length?bodylog[bodylog.length-1].w:client.bw;
+  const liftWeekly=(exId)=>{const byW={};Object.keys(clogs).forEach(k=>{const pr=k.split("|");if(pr[2]!==exId)return;const wk=parseInt(pr[0].slice(1),10);const e=clogs[k];if(!e||!e.sets)return;e.sets.forEach(s=>{if(s.done){const v=e1rm(Number(s.w)||0,Number(s.r)||0);if(v>(byW[wk]||0))byW[wk]=v;}});});return Object.keys(byW).map(Number).sort((a,b)=>a-b).map(w=>byW[w]);};
   const coachMsgs=(notes||[]);
 
   const askAI=async()=>{
@@ -185,9 +193,23 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
 
       {tab==="progress"&&<div style={{paddingTop:6,display:"flex",flexDirection:"column",gap:12}}>
 
-        {(()=>{const FUND=[["Back Squat","Squat","#FF6B2C"],["Barbell Bench Press","Bench","#3AE0FF"],["Conventional Deadlift","Deadlift","#A78BFA"]];const seriesBy=Object.fromEntries((stats.series||[]).map(s=>[s.nm,s.arr]));const rows=FUND.map(([nm,short,col])=>{const pr=stats.prs[nm];const arr=seriesBy[nm];const cur=pr?pr.e:(arr&&arr.length?arr[arr.length-1]:0);const start=arr&&arr.length?arr[0]:cur;return{nm,short,col,cur,arr,start,delta:cur-start,set:pr?pr.w+"×"+pr.r:null};}).filter(r=>r.cur>0);const total=rows.reduce((a,r)=>a+r.cur,0);const startTotal=rows.reduce((a,r)=>a+r.start,0);const rel=lastBw?Math.round(total/lastBw*100)/100:0;return(<div style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:11,padding:13}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:12}}><div><div style={{fontSize:11,color:D.sub,letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>Fundamental Lifts · est. 1RM</div><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:24,lineHeight:1}}>{total}<span style={{fontSize:12,color:D.sub}}> lb total</span></div></div>{rows.length>0&&<div style={{textAlign:"right"}}>{total-startTotal>0&&<div style={{fontSize:12,color:D.good,fontWeight:700}}>▲ +{total-startTotal} lb</div>}{rel>0&&<div style={{fontSize:11,color:D.sub}}>{rel}× bodyweight</div>}</div>}</div>{rows.length===0?<div style={{fontSize:12,color:D.sub,fontStyle:"italic"}}>Log your squat, bench, and deadlift — your best set each week builds this chart and your estimated 1-rep max.</div>:rows.map(r=>{const arr=r.arr&&r.arr.length>=2?r.arr:[r.cur];const max=Math.max(...arr),min=Math.min(...arr)*0.94,rg=(max-min)||1;return(<div key={r.nm} style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}><span style={{fontSize:12.5,fontWeight:700,color:r.col}}>{r.short}</span><span><span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700}}>{r.cur}</span><span style={{fontSize:11,color:D.sub}}> lb{r.set?" · "+r.set:""}</span>{r.delta>0&&<span style={{fontSize:11,color:D.good,fontWeight:700}}> ▲{r.delta}</span>}</span></div><div style={{display:"flex",alignItems:"flex-end",gap:3,height:40}}>{arr.map((v,i)=>{const h=8+((v-min)/rg)*32;const last=i===arr.length-1;return <div key={i} title={"Wk "+(i+1)+": "+v+" lb"} style={{flex:1,minWidth:4,height:h,background:last?r.col:r.col+"55",borderRadius:"3px 3px 0 0"}}/>;})}</div></div>);})}{rows.length>0&&<div style={{fontSize:11,color:D.sub,textAlign:"center",paddingTop:2}}>Bars = best est. 1RM each week. The taller they climb, the stronger you're getting.</div>}</div>);})()}
+        {(()=>{
+          const ids=(trackedLifts&&trackedLifts.length?trackedLifts:DEFAULT_LIFTS).filter(id=>EXBYID[id]);
+          const rows=ids.map((id,i)=>{const arr=liftWeekly(id);const cur=arr.length?Math.max(...arr):0;const start=arr.length?arr[0]:0;return{id,short:shortName(EXBYID[id].n),col:LIFTCOLORS[i%LIFTCOLORS.length],arr,cur,start,delta:cur-start,pts:arr.length>=2?arr:(cur>0?[cur]:[])};});
+          const withData=rows.filter(r=>r.cur>0);const total=withData.reduce((a,r)=>a+r.cur,0);const startTotal=withData.reduce((a,r)=>a+r.start,0);const rel=lastBw&&total?Math.round(total/lastBw*100)/100:0;
+          const W=300,H=104,P=8;const allV=rows.flatMap(r=>r.pts);const maxLen=Math.max(1,...rows.map(r=>r.pts.length));const mx=allV.length?Math.max(...allV):1,mn=allV.length?Math.min(...allV):0,rg2=(mx-mn)||1;const X=i=>P+(maxLen<=1?(W-2*P)/2:(i/(maxLen-1))*(W-2*P));const Y=v=>P+(1-(v-mn)/rg2)*(H-2*P);const hasLine=rows.some(r=>r.pts.length>=2);
+          return(<div style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:11,padding:13}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:10}}>
+              <div><div style={{fontSize:11,color:D.sub,letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>Tracked Lifts &middot; est. 1RM</div><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:24,lineHeight:1}}>{total}<span style={{fontSize:12,color:D.sub}}> lb total</span></div></div>
+              <div style={{textAlign:"right"}}>{rel>0&&<div style={{fontSize:11,color:D.sub,marginBottom:4}}>{rel}&times; bodyweight</div>}<button onClick={()=>setEditLifts(e=>!e)} style={{background:"transparent",border:`1px solid ${D.line}`,color:editLifts?D.acc:D.sub,borderRadius:6,padding:"4px 9px",fontSize:11,fontWeight:700,cursor:"pointer"}}>{editLifts?"Done":"Edit lifts"}</button></div>
+            </div>
+            {withData.length>0?<svg viewBox={"0 0 "+W+" "+H} style={{width:"100%",height:104,display:"block"}} preserveAspectRatio="none">{[0.25,0.5,0.75].map(g=><line key={g} x1={P} x2={W-P} y1={P+g*(H-2*P)} y2={P+g*(H-2*P)} stroke={D.line} strokeWidth="0.5"/>)}{rows.map(r=>r.pts.length>=2?<polyline key={r.id} points={r.pts.map((v,i)=>X(i)+","+Y(v)).join(" ")} fill="none" stroke={r.col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>:null)}{rows.map(r=>r.pts.map((v,i)=><circle key={r.id+i} cx={X(i)} cy={Y(v)} r="2.4" fill={r.col} vectorEffect="non-scaling-stroke"/>))}</svg>:<div style={{fontSize:12,color:D.sub,fontStyle:"italic",padding:"8px 0"}}>Log these lifts in your sessions and your estimated 1-rep max will chart here.</div>}
+            <div style={{display:"flex",flexWrap:"wrap",gap:12,justifyContent:"center",marginTop:10}}>{rows.map(r=>(<div key={r.id} style={{textAlign:"center"}}><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><span style={{width:9,height:9,borderRadius:2,background:r.col,display:"inline-block"}}/><span style={{fontSize:11,color:D.sub,fontWeight:700}}>{r.short}</span>{editLifts&&<button onClick={()=>onSetTracked&&onSetTracked(ids.filter(x=>x!==r.id))} style={{marginLeft:1,background:"transparent",border:0,color:"#FF8A8A",fontSize:14,cursor:"pointer",lineHeight:1,padding:"0 2px"}}>&times;</button>}</div><div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,marginTop:2}}>{r.cur||"\u2014"}{r.cur?<span style={{fontSize:11,color:D.sub}}> lb</span>:null}</div>{r.delta>0&&<div style={{fontSize:11,color:D.good,fontWeight:700}}>\u25b2{r.delta}</div>}</div>))}</div>
+            {editLifts&&<button onClick={()=>setPickLift(true)} disabled={ids.length>=7} style={{width:"100%",marginTop:11,background:D.acc,color:"#0B0B0C",border:0,borderRadius:7,padding:9,fontWeight:800,fontSize:12,cursor:"pointer",opacity:ids.length>=7?.5:1}}>{ids.length>=7?"Max 7 lifts tracked":"+ Add a lift to track"}</button>}
+            {!hasLine&&withData.length>0&&<div style={{fontSize:11,color:D.sub,textAlign:"center",marginTop:8}}>Log 2+ weeks to see the lines climb.</div>}
+          </div>);})()}
 
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>{[["Sessions",stats.sessions],["Best streak",stats.maxStreak+"d"],["Training wk",cw+"/"+client.totalWeeks]].map(([l,v])=>(<div key={l} style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:10,padding:"11px 12px"}}><div style={{fontSize:11,color:D.sub,letterSpacing:".08em",textTransform:"uppercase",fontWeight:700}}>{l}</div><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:22,marginTop:2}}>{v}</div></div>))}</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>{[["Sessions",stats.sessions],["Best streak",stats.maxStreak+"d"],["Training wk",cw+"/"+client.totalWeeks]].map(([l,v])=>(<div key={l} style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:10,padding:"11px 12px"}}><div style={{fontSize:11,color:D.sub,letterSpacing:".08em",textTransform:"uppercase",fontWeight:700}}>{l}</div><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:22,marginTop:2}}>{v}</div></div>))}</div>
         <div style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:11,padding:13}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8}}><div><div style={{fontSize:11,color:D.sub,letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>Body Weight</div><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:24}}>{lastBw}<span style={{fontSize:12,color:D.sub}}> lb</span></div></div><div style={{display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end"}}><span style={{fontSize:11,color:D.sub,letterSpacing:".08em",textTransform:"uppercase",fontWeight:700}}>Today (lbs)</span><div style={{display:"flex",gap:6,alignItems:"center"}}><input type="number" value={bw} onChange={e=>setBw(e.target.value)} placeholder="lbs" style={{width:62,background:D.lift,border:`1px solid ${D.line}`,borderRadius:6,padding:7,color:D.ink,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",fontSize:13,outline:"none"}}/><button onClick={()=>{const v=Number(bw);if(v>0){onLogBody({date:today,w:v});onXP(5);setBw("");pop("⚖️ Logged · +5 XP");}}} style={{background:D.acc,color:"#0B0B0C",border:0,borderRadius:6,padding:"7px 11px",fontWeight:800,cursor:"pointer",fontSize:11}}>Log</button></div></div></div>
           {bodylog.length>1&&<Spark data={bodylog.map(b=>b.w)} color={client.accent} h={50}/>}
@@ -258,5 +280,6 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
     {ciOpen&&<AthCheckin onClose={()=>setCiOpen(false)} onSave={v=>{onAddCheckin({date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"}),...v});onXP(75);setCiOpen(false);pop("📋 Check-in sent to coach · +75 XP");}}/>}
     {recapOpen&&<WeeklyRecap client={client} program={program} clogs={clogs} bodylog={bodylog} misses={misses} stats={stats} cw={cw} onSend={t=>{onSendChat(t);pop("📈 Recap sent to your coach");}} onClose={()=>setRecapOpen(false)}/>}
     {profileOpen&&<Profile name={client.name} email={client.email||""} onClose={()=>setProfileOpen(false)}/>}
+    {pickLift&&<ExercisePicker onPick={ex=>{const cur=(trackedLifts&&trackedLifts.length?trackedLifts:DEFAULT_LIFTS).filter(id=>EXBYID[id]);if(!cur.includes(ex.id)&&cur.length<7&&onSetTracked)onSetTracked([...cur,ex.id]);setPickLift(false);}} onClose={()=>setPickLift(false)}/>}
   </div>);
 }
