@@ -1,7 +1,7 @@
 // theme/styles.js — coach Coach-OS stylesheet + font import
 export const CSS=`
 *{box-sizing:border-box;}
-.app{display:grid;grid-template-columns:210px 1fr;height:100vh;width:100%;max-width:1024px;margin-left:auto;margin-right:auto;background:#0B0B0C;color:#F5F4F0;font-family:'Inter Tight',-apple-system,system-ui,sans-serif;font-size:13.5px;line-height:1.4;}
+.app{display:grid;grid-template-columns:210px 1fr;height:100vh;width:100%;background:#0B0B0C;color:#F5F4F0;font-family:'Inter Tight',-apple-system,system-ui,sans-serif;font-size:13.5px;line-height:1.4;}
 .mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;}
 .sidebar{background:#131315;border-right:1px solid #2A2A2F;display:flex;flex-direction:column;padding:16px 12px;gap:18px;overflow-y:auto;}
 .brand{display:flex;align-items:center;gap:9px;padding:0 4px 4px;}
