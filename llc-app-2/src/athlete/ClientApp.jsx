@@ -53,9 +53,13 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
       <SessionRunner day={day} week={cw} total={client.totalWeeks} clogs={clogs} onReady={r=>{onLogReadiness({date:today,...r});if(r.sleep<=4||r.soreness>=8||r.energy<=3)onSendChat("⚠️ Readiness flag before "+day.name+" — sleep "+r.sleep+", energy "+r.energy+", soreness "+r.soreness+"/10");}} onCancel={()=>setRun(null)} onDone={entries=>{
         const before=stats.prs;let pr=false;
         Object.entries(entries).forEach(([k,v])=>{const exId=k.split("|")[2];const ex=EXBYID[exId];if(!ex||!MAINLIFTS.includes(ex.n))return;v.sets.forEach(s=>{if(s.done){const est=e1rm(Number(s.w)||0,Number(s.r)||0);const prev=before[ex.n];if(est>0&&(!prev||est>prev.e))pr=true;}});});
+        const sessKey=`w${cw}|${day.id}`;
+        const alreadyAwarded=day.ex.some(x=>{const e=clogs[`${sessKey}|${x.exId}`];return e&&e.awarded;});
+        Object.values(entries).forEach(v=>{v.awarded=true;});
         onSaveSession(entries);
-        let g=100;if(pr)g+=150;onXP(g);
-        setRun(null);setTab("home");pop(pr?`🔥 NEW PR! +${g} XP`:`💪 Session done · +${g} XP`,true);
+        if(!alreadyAwarded){let g=100;if(pr)g+=150;onXP(g);pop(pr?`🔥 NEW PR! +${g} XP`:`💪 Session done · +${g} XP`,true);}
+        else pop("💪 Progress saved — session already counted",false);
+        setRun(null);setTab("home");
       }}/>
     </div>);
   }
@@ -223,7 +227,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
             {gm!=="none"&&<input type="number" value={gtar} onChange={e=>setGtar(e.target.value)} placeholder="target" style={{width:72,background:D.lift,border:`1px solid ${D.line}`,color:D.ink,borderRadius:6,padding:"7px 6px",fontSize:12,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",outline:"none"}}/>}
             <input type="date" value={gdue} onChange={e=>setGdue(e.target.value)} style={{background:D.lift,border:`1px solid ${D.line}`,color:D.ink,borderRadius:6,padding:"7px 6px",fontSize:11,fontFamily:"inherit",outline:"none"}}/>
           </div>
-          <button onClick={()=>{if(gt.trim()){onSaveGoals([...goals,{id:"g"+Date.now(),text:gt.trim(),metric:gm,target:gm!=="none"?(Number(gtar)||0):0,due:gdue?new Date(gdue+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"",done:false}]);setGt("");setGm("none");setGtar("");setGdue("");onXP(15);pop("🎯 Goal set · +15 XP");}}} style={{width:"100%",background:D.acc,color:"#0B0B0C",border:0,borderRadius:6,padding:9,fontWeight:800,cursor:"pointer",fontSize:11}}>Add Goal</button>
+          <button onClick={()=>{const mlabel={squat:"squat e1RM",bench:"bench e1RM",deadlift:"deadlift e1RM",bodyweight:"bodyweight",sessions:"total sessions"};let txt=gt.trim();if(!txt&&gm!=="none"&&Number(gtar)>0)txt="Hit "+Number(gtar)+" "+mlabel[gm];if(!txt){pop("✍️ Type a goal first — or pick a metric + target");return;}onSaveGoals([...goals,{id:"g"+Date.now(),text:txt,metric:gm,target:gm!=="none"?(Number(gtar)||0):0,due:gdue?new Date(gdue+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"",done:false}]);setGt("");setGm("none");setGtar("");setGdue("");onXP(15);pop("🎯 Goal set · +15 XP");}} style={{width:"100%",background:D.acc,color:"#0B0B0C",border:0,borderRadius:6,padding:9,fontWeight:800,cursor:"pointer",fontSize:11}}>Add Goal</button>
         </div>
       </div>}
 
