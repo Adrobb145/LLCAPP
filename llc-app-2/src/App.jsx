@@ -5,7 +5,6 @@ import * as db from "./lib/db";
 import AuthGate from "./auth/AuthGate";
 import { COACHES0, CLIENTS0, makeProgram, seedLogs, seedPillarActs } from "./constants/seed";
 import { PILLAR_ACTS } from "./constants/pillars";
-import { EX } from "./constants/exercises";
 import { analyze } from "./lib/analytics";
 import { CSS } from "./theme/styles";
 import Avatar from "./shared/Avatar";
@@ -23,7 +22,6 @@ import SessionsTracker from "./coach/SessionsTracker";
 import ProgramBuilder from "./coach/ProgramBuilder";
 import Planner from "./coach/Planner";
 import Sheet from "./coach/Sheet";
-import Library from "./coach/Library";
 import Team from "./coach/Team";
 
 export default function App(){
@@ -179,7 +177,7 @@ export default function App(){
   }
   if(!authCoach)return(<CoachAuth coaches={coaches} onLogin={setAuthCoach}/>);
 
-  const crumbs=view==="roster"?["Workspace","Roster"]:view==="planner"?["Clients",client?.name,"Planner"]:view==="sheet"?["Clients",client?.name]:view==="builder"?["Clients",client?.name,"Build"]:view==="team"?["Manage","Team"]:view==="insights"?["AI","Insights"]:view==="sessions"?["Invoicing","Sessions"]:["Workspace","Library"];
+  const crumbs=view==="roster"?["Workspace","Roster"]:view==="planner"?["Clients",client?.name,"Planner"]:view==="sheet"?["Clients",client?.name]:view==="builder"?["Clients",client?.name,"Build"]:view==="team"?["Manage","Team"]:view==="insights"?["AI","Insights"]:view==="sessions"?["Invoicing","Sessions"]:["Workspace","Roster"];
   const flaggedCt=clients.map(c=>analyze(c,programs,logs,checkins)).filter(a=>a.score>=14).length;
   const pendingVids=Object.values(formvids).reduce((a,arr)=>a+arr.filter(v=>v.status!=="reviewed").length,0);
   const emptyClient=(<div className="pl"><div className="rhead"><div><div className="kick" style={{marginBottom:8}}>Workspace</div><div className="rtitle">No clients yet</div><div className="rsub">Add your first client to start programming — a starter block is generated automatically.</div></div><button className="btn" onClick={()=>setAddOpen(true)}>＋ Add Client</button></div></div>);
@@ -195,7 +193,6 @@ export default function App(){
         <button className="sb-item" data-on={view==="planner"} onClick={()=>setView("planner")}>🗓 Planner</button>
         <button className="sb-item" data-on={view==="sheet"} onClick={()=>setView("sheet")}>📝 Program Sheet{pendingVids>0&&<span className="sb-item-ct" style={{color:"#FFB23A"}}>🎥{pendingVids}</span>}</button>
         <button className="sb-item" data-on={view==="sessions"} onClick={()=>setView("sessions")}>🧾 Sessions</button>
-        <button className="sb-item" data-on={view==="library"} onClick={()=>setView("library")}>📚 Library<span className="sb-item-ct">{EX.length}</span></button>
         <button className="sb-item" data-on={view==="team"} onClick={()=>setView("team")}>🏢 Team<span className="sb-item-ct">{coaches.length}</span></button>
       </div></div>
       <div><div className="sb-lbl">Clients</div><div className="sb-cl">{clients.map(c=>{const fvp=(formvids[c.id]||[]).some(v=>v.status!=="reviewed");return(<button key={c.id} className="sb-clrow" data-on={(view==="sheet"||view==="planner"||view==="builder")&&clientId===c.id} onClick={()=>openClient(c.id)}><Avatar txt={c.initials} c={c.accent} size={22}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name.split(" ")[0]}</span>{fvp&&<span title="Form review pending" style={{marginLeft:"auto",fontSize:10}}>🎥</span>}<span style={{marginLeft:fvp?6:"auto",width:6,height:6,borderRadius:"50%",background:c.adherence>.85?"#3AE07A":c.adherence>.7?"#FFB23A":"#54534D"}}/></button>);})}</div></div>
@@ -204,7 +201,6 @@ export default function App(){
     <div className="main">
       <div className="topbar"><div className="crumbs">{crumbs.map((c,i)=>(<span key={i} style={{display:"contents"}}>{i>0&&<span className="sep">/</span>}{i===crumbs.length-1?<b>{c}</b>:<span>{c}</span>}</span>))}</div><div style={{flex:1}}/>
         {(view==="sheet"||view==="planner"||view==="builder")&&<><button className="btn sec" data-on={view==="builder"} onClick={()=>setView("builder")}>✏️ Build</button><button className="btn sec" onClick={()=>setView("planner")}>🗓 Planner</button><button className="btn sec" onClick={()=>setView("sheet")}>📝 Sheet</button></>}
-        <button className="btn" onClick={()=>setView("library")}>＋ Exercise</button>
       </div>
       <div className="content">
         {view==="roster"&&<Roster clients={clients} coaches={coaches} onOpen={openClient} onAddClient={()=>setAddOpen(true)} onEdit={(c)=>setEditId(c.id)} onDelete={removeClient}/>}
@@ -213,7 +209,6 @@ export default function App(){
         {view==="builder"&&(client?<ProgramBuilder client={client} program={program} onEditEx={editEx} onAddEx={addEx} onRemoveEx={removeEx} onReorderEx={reorderEx} onRenameDay={renameDay} onSetDow={setDow} onAddDay={addDay} onRemoveDay={removeDay} onSetPillarTarget={setPillarTarget} onSetNutrition={setNutrition}/>:emptyClient)}
         {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} onEditEx={editEx} onSetWeeks={setWeeks} onAddEx={addEx} onRemoveEx={removeEx} onAdvanceWeek={advanceWeek}/>:emptyClient)}
         {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={addEx} onRemoveEx={removeEx} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)}/>:emptyClient)}
-        {view==="library"&&<Library/>}
         {view==="team"&&<Team coaches={coaches} clients={clients} onMoveClient={moveClient} onRemoveCoach={removeCoach} onAddCoach={addCoach} isOwner={isOwner} onInviteCoach={hasBackend&&isOwner?()=>setInviteCoachOpen(true):null}/>}
       </div>
     </div>
