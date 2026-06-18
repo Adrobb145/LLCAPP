@@ -22,6 +22,8 @@ export default function AuthGate({ onReady }) {
   const [msg, setMsg] = useState("");
   const [needPw, setNeedPw] = useState(false);   // arrived via invite link → set password
   const [noAccess, setNoAccess] = useState(false);
+  const [forgot, setForgot] = useState(false);   // forgot-password panel open
+  const [sent, setSent] = useState(false);       // reset email dispatched
 
   useEffect(() => {
     db.getSession().then(setSession);
@@ -58,6 +60,18 @@ export default function AuthGate({ onReady }) {
     try {
       const { error } = await db.signIn(email.trim(), pw);
       if (error) throw error;
+    } catch (e) { setMsg(e.message || String(e)); }
+    setBusy(false);
+  };
+
+  const sendReset = async () => {
+    if (busy) return;
+    if (!email) { setMsg("Enter your email above first, then tap Send reset link."); return; }
+    setBusy(true); setMsg("");
+    try {
+      const { error } = await db.requestPasswordReset(email.trim());
+      if (error) throw error;
+      setSent(true);
     } catch (e) { setMsg(e.message || String(e)); }
     setBusy(false);
   };
@@ -102,7 +116,7 @@ export default function AuthGate({ onReady }) {
 
   if (session && needPw) {
     return (<div style={wrap}><style>{FONTS}{focusCSS}</style><div style={card}><Brand />
-      <div style={{ fontSize: 12.5, color: D.sub, textAlign: "center", marginBottom: 6 }}>Welcome — set a password to finish setup.</div>
+      <div style={{ fontSize: 12.5, color: D.sub, textAlign: "center", marginBottom: 6 }}>{inviteType === "recovery" ? "Reset your password — choose a new one below." : "Welcome — set a password to finish setup."}</div>
       <form onSubmit={(e) => { e.preventDefault(); finishPassword(); }}>
         <label style={lbl} htmlFor="np-pw">New password (8+ characters)</label>
         <div style={{ position: "relative" }}>
@@ -114,6 +128,31 @@ export default function AuthGate({ onReady }) {
         <button type="submit" style={btn} className="lg-in" disabled={busy}>{busy ? "Saving…" : "Set password & enter"}</button>
       </form>
       {msg && <div role="alert" style={{ color: "#FFB23A", fontSize: 12, textAlign: "center", marginTop: 10 }}>{msg}</div>}
+    </div></div>);
+  }
+
+  if (forgot) {
+    return (<div style={wrap}><style>{FONTS}{focusCSS}</style><div style={card}><Brand />
+      {sent ? (
+        <div style={{ background: D.card, border: `1px solid ${D.line}`, borderRadius: 10, padding: 18, textAlign: "center" }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Check your email</div>
+          <div style={{ fontSize: 12.5, color: D.sub, lineHeight: 1.5 }}>If an account exists for <strong style={{ color: D.ink }}>{email.trim()}</strong>, a password-reset link is on its way. It can take a few minutes — check your spam folder too. Open the link on this device to set a new password.</div>
+          <button style={{ ...btn, background: D.card, color: D.ink, border: `1px solid ${D.line}` }} className="lg-in" onClick={() => { setForgot(false); setSent(false); setMsg(""); }}>Back to sign in</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 12.5, color: D.sub, textAlign: "center", marginBottom: 6 }}>Reset your password</div>
+          <form onSubmit={(e) => { e.preventDefault(); sendReset(); }}>
+            <label style={lbl} htmlFor="fp-email">Email</label>
+            <input id="fp-email" name="email" className="lg-in" style={input} type="email" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" />
+            <button type="submit" style={btn} className="lg-in" disabled={busy || !email}>{busy ? "Sending…" : "Send reset link"}</button>
+          </form>
+          <div style={{ textAlign: "center", marginTop: 14 }}>
+            <button type="button" className="lg-link" onClick={() => { setForgot(false); setMsg(""); }}>Back to sign in</button>
+          </div>
+        </>
+      )}
+      {msg && <div role="alert" style={{ color: "#FFB23A", fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 1.4 }}>{msg}</div>}
     </div></div>);
   }
 
@@ -129,6 +168,9 @@ export default function AuthGate({ onReady }) {
       </div>
       <button type="submit" style={btn} className="lg-in" disabled={busy || !email || !pw}>{busy ? "Signing in…" : "Sign in"}</button>
     </form>
+    <div style={{ textAlign: "center", marginTop: 12 }}>
+      <button type="button" className="lg-link" onClick={() => { setForgot(true); setMsg(""); }}>Forgot password?</button>
+    </div>
     {msg && <div role="alert" style={{ color: "#FFB23A", fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 1.4 }}>{msg}</div>}
     <div style={{ fontSize: 11, color: D.sub, textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>New here? Access is by invitation. Check your email for an invite link from your coach or gym.</div>
   </div></div>);
