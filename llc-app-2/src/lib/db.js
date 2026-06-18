@@ -29,6 +29,11 @@ export async function setPassword(password) {
   const { error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
 }
+// Sends a password-reset email. The link returns to the app with type=recovery,
+// which AuthGate routes to the "set a new password" screen.
+export async function requestPasswordReset(email) {
+  return supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+}
 // Role-gated server-side invite (owner→coach, coach→athlete). Sends the email.
 export async function deleteClient(clientId) {
   const { data, error } = await supabase.functions.invoke("purge", { body: { clientId } });
