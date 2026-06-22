@@ -4,6 +4,7 @@ import { hasBackend } from "./lib/supabase";
 import * as db from "./lib/db";
 import AuthGate from "./auth/AuthGate";
 import { COACHES0, CLIENTS0, makeProgram, seedLogs, seedPillarActs } from "./constants/seed";
+import { setCustomExercises } from "./constants/exercises";
 import { PILLAR_ACTS } from "./constants/pillars";
 import { analyze } from "./lib/analytics";
 import { CSS } from "./theme/styles";
@@ -43,6 +44,7 @@ export default function App(){
   const [authClient,setAuthClient]=useState(null);
   const [authCoach,setAuthCoach]=useState(null);
   const [view,setView]=useState("roster");
+  const [,setCustTick]=useState(0);   // bump to re-render after custom exercises register
   const [clientId,setClientId]=useState("mar");
   const [week,setWeek]=useState(4);
   const [hydrated,setHydrated]=useState(false);
@@ -72,6 +74,7 @@ export default function App(){
       cl.forEach(c=>{if(!m.programs[c.id]){const prog=makeProgram(c);m.programs[c.id]=prog;if(!stateById[c.id])m.logs[c.id]=seedLogs(c,prog);}});
       db.primeCache({coaches:co,clients:cl,state:stateById});
       setPrograms(m.programs);setLogs(m.logs);setNotes(m.notes);setMeals(m.meals);setXp(m.xp);setGoals(m.goals);setCheckins(m.checkins);setBodylog(m.bodylog);setPhotos(m.photos);setFreezes(m.freezes);setCkday(m.ckday);setAttendance(m.attendance);setMisses(m.misses);setReadiness(m.readiness);if(Object.keys(m.pillaracts).length)setPillaracts(m.pillaracts);setFormvids(m.formvids);setTracked(m.tracked);
+      try{const cx=await db.loadCustomExercises();setCustomExercises(cx);setCustTick(t=>t+1);}catch(e){console.error("LLC custom-ex load",e);}
     }catch(e){console.error("LLC load error",e);}
     setHydrated(true);
   };
