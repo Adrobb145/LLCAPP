@@ -9,17 +9,20 @@ import * as db from "../lib/db";
 
 const XPCSS = `
 .xp-ovl{position:fixed;inset:0;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;box-sizing:border-box;}
-.xp-modal{background:#131315;border:1px solid #36363C;border-radius:12px;width:680px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.55);}
+.xp-modal{background:#131315;border:1px solid #36363C;border-radius:12px;width:680px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;color:#F5F4F0;box-shadow:0 18px 50px rgba(0,0,0,.55);}
 .xp-h{padding:13px 16px;border-bottom:1px solid #2A2A2F;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .xp-t{font-family:'Archivo Black',sans-serif;font-size:15px;color:#F5F4F0;}
 .xp-l{flex:1;overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch;}
-.xp-item{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:9px 11px;border-radius:6px;cursor:pointer;align-items:center;}
+.xp-item{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:10px 12px;border-radius:6px;cursor:pointer;align-items:center;}
 .xp-item:hover{background:#1A1A1D;}
 .xp-field{background:#1A1A1D;border:1px solid #2A2A2F;border-radius:6px;padding:9px 11px;color:#F5F4F0;font-family:inherit;font-size:16px;outline:none;width:100%;box-sizing:border-box;}
 .xp-field:focus{border-color:#FF6B2C;}
 .xp-chips{display:flex;gap:4px;flex-wrap:wrap;}
 .xp-chip{border:1px solid #36363C;background:transparent;color:#B5B3AB;font-family:inherit;font-size:11px;font-weight:500;padding:5px 10px;border-radius:4px;cursor:pointer;text-transform:capitalize;}
 .xp-chip[data-on="true"]{background:#FF6B2C;color:#0B0B0C;border-color:#FF6B2C;font-weight:700;}
+.xp-frow{display:flex;gap:5px;flex-wrap:nowrap;overflow-x:auto;padding:0 16px 8px;scrollbar-width:none;align-items:center;}
+.xp-frow::-webkit-scrollbar{display:none;}
+.xp-frow>.xp-chip{flex-shrink:0;}
 .xp-mtag{font-size:11px;letter-spacing:.06em;padding:1px 5px;border-radius:3px;background:#232327;color:#807E76;text-transform:capitalize;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;}
 .xp-ldot{width:5px;height:5px;border-radius:50%;display:inline-block;}
 .xp-actb{border:0;background:transparent;color:#807E76;padding:3px;font-size:14px;cursor:pointer;line-height:1;}
@@ -80,8 +83,8 @@ export default function ExercisePicker({ onPick, onClose, allowCustom }) {
   };
 
   const Row = ({ label, value, set, opts }) => (
-    <div className="xp-chips" style={{ padding: "0 16px 8px" }}>
-      <span style={{ fontSize: 9, color: "#807E76", letterSpacing: ".08em", textTransform: "uppercase", alignSelf: "center", marginRight: 4 }}>{label}</span>
+    <div className="xp-frow">
+      <span style={{ fontSize: 9, color: "#807E76", letterSpacing: ".08em", textTransform: "uppercase", alignSelf: "center", marginRight: 4, flexShrink: 0 }}>{label}</span>
       <button className="xp-chip" data-on={value === "all"} onClick={() => set("all")}>All</button>
       {opts.map(x => <button key={x} className="xp-chip" data-on={value === x} onClick={() => set(x)}>{x}</button>)}
     </div>
@@ -124,7 +127,7 @@ export default function ExercisePicker({ onPick, onClose, allowCustom }) {
 
     <div className="xp-l">{f.map(e => (
       <div key={e.id} className="xp-item" onClick={() => onPick(e)}>
-        <div style={{ minWidth: 0 }}><div style={{ fontSize: 12.5, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>{e.n}{e.custom && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "#FF6B2C", background: "rgba(255,107,44,.14)", border: "1px solid rgba(255,107,44,.4)", borderRadius: 3, padding: "1px 5px" }}>Custom</span>}</div><div style={{ fontSize: 10, color: "#807E76" }}>{PATL[e.p] || e.p} · {e.m.join(" · ")}</div></div>
+        <div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{e.n}{e.custom && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "#FF6B2C", background: "rgba(255,107,44,.14)", border: "1px solid rgba(255,107,44,.4)", borderRadius: 3, padding: "1px 5px" }}>Custom</span>}</div><div style={{ fontSize: 10.5, color: "#807E76", marginTop: 1 }}>{PATL[e.p] || e.p} · {e.m.join(" · ")}</div></div>
         <span className="xp-mtag">{e.e}</span>
         <span className="xp-mtag"><span className="xp-ldot" style={{ background: LDOT[e.lv] }} />{e.lv}</span>
         {allowCustom && e.custom && <button className="xp-actb" title="Delete custom exercise" style={{ fontSize: 13, gridColumn: "1 / -1", justifySelf: "end", marginTop: -2 }} onClick={ev => delCustom(e.id, ev)}>🗑 remove</button>}
