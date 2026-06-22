@@ -91,6 +91,6 @@ export default function ProgramBuilder({client,program,onEditEx,onAddEx,onRemove
         </div>}
       </div>);})}
     </div>
-    {picker&&day&&<ExercisePicker onPick={e=>{onAddEx(day.id,e.id);setPicker(false);}} onClose={()=>setPicker(false)}/>}
+    {picker&&day&&<ExercisePicker allowCustom onPick={e=>{onAddEx(day.id,e.id);setPicker(false);}} onClose={()=>setPicker(false)}/>}
   </div>);
 }
