@@ -46,6 +46,6 @@ export default function Planner({client,program,logs,onEditEx,onSetWeeks,onAddEx
         <div className="plr" style={{gridTemplateColumns:colTmpl}}><div style={{flexDirection:"row"}}><button className="addexb" style={{padding:"4px 9px",fontSize:9}} onClick={()=>setPicker(d.id)}>+ Add to {d.name.split(" · ")[0]}</button></div>{weeks.map(w=><div key={w} className="plcell"/>)}</div>
       </div>))}
     </div>
-    {picker&&<ExercisePicker onPick={e=>{onAddEx(picker,e.id);setPicker(null);}} onClose={()=>setPicker(null)}/>}
+    {picker&&<ExercisePicker allowCustom onPick={e=>{onAddEx(picker,e.id);setPicker(null);}} onClose={()=>setPicker(null)}/>}
   </div>);
 }
