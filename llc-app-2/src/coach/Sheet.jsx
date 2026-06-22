@@ -100,6 +100,6 @@ export default function Sheet({client,program,week,setWeek,logs,onLog,onAddEx,on
         {cNotes.map((n,i)=>(<div key={i} className="note" style={n.from==="client"?{borderLeftColor:client.accent,background:client.accent+"12"}:{}}><div className="note-m"><span>{n.author}{n.from==="client"?" · athlete":""}</span><span>{n.date}</span></div>{n.text}</div>))}
       </div>
     </div>
-    {picker&&<ExercisePicker onPick={e=>{onAddEx(day.id,e.id);setPicker(false);}} onClose={()=>setPicker(false)}/>}
+    {picker&&<ExercisePicker allowCustom onPick={e=>{onAddEx(day.id,e.id);setPicker(false);}} onClose={()=>setPicker(false)}/>}
   </div>);
 }
