@@ -268,8 +268,17 @@ Overhead Squat|squat|barbell|adv|quads,shoulders
 Clean and Jerk|pull|barbell|adv|traps,shoulders
 Push Jerk|push|barbell|adv|shoulders,triceps`;
 const LV={beg:"beginner",int:"intermediate",adv:"advanced"};
-export const EX=_EX.split("\n").map((l,i)=>{const[n,p,e,lv,m]=l.split("|");return{id:"e"+i,n,p,e,lv:LV[lv],m:m.split(",")};});
-export const EXBYID=Object.fromEntries(EX.map(e=>[e.id,e]));
+const BASE=_EX.split("\n").map((l,i)=>{const[n,p,e,lv,m]=l.split("|");return{id:"e"+i,n,p,e,lv:LV[lv],m:m.split(",")};});
+// EX / EXBYID are LIVE bindings. Base movements are fixed; coach-defined custom
+// exercises are merged in at runtime via setCustomExercises / addCustomToRegistry.
+export let EX=BASE.slice();
+export let EXBYID=Object.fromEntries(EX.map(e=>[e.id,e]));
+let CUSTOM=[];
+const mapCustom=r=>({id:r.id,n:r.name,p:r.pattern,e:r.equip,lv:r.level,m:String(r.muscles||"").split(",").map(s=>s.trim()).filter(Boolean),custom:true});
+function rebuild(){EX=BASE.concat(CUSTOM);EXBYID=Object.fromEntries(EX.map(e=>[e.id,e]));}
+export function setCustomExercises(rows){CUSTOM=(rows||[]).map(mapCustom);rebuild();}
+export function addCustomToRegistry(row){const ex=mapCustom(row);CUSTOM=[...CUSTOM,ex];rebuild();return ex;}
+export function removeCustomFromRegistry(id){CUSTOM=CUSTOM.filter(e=>e.id!==id);rebuild();}
 export const ID=n=>{const x=EX.find(e=>e.n===n);return x?x.id:null;};
 export const PATS=["squat","hinge","push","pull","carry","core","acc","condition","mobility"];
 export const PATL={squat:"Squat",hinge:"Hinge",push:"Push",pull:"Pull",carry:"Carry",core:"Core",acc:"Accessory",condition:"Conditioning",mobility:"Mobility"};
