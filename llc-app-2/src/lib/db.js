@@ -106,3 +106,32 @@ export function primeCache(snapshot) {
   snapshot.clients.forEach((c) => { last.clients[c.id] = J(c); });
   Object.entries(snapshot.state).forEach(([cid, s]) => { last.state[cid] = J(s); });
 }
+
+// ---- custom (coach-defined) exercises --------------------------------------
+// Gym-wide movement library additions. Readable by any authenticated user
+// (athletes need them resolvable in their programs); writable by coaches/owner
+// via row-level security on the custom_exercises table.
+export async function loadCustomExercises() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("custom_exercises")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+export async function addCustomExercise(p) {
+  if (!supabase) return { id: "cx_" + Date.now(), ...p };
+  const { data, error } = await supabase
+    .from("custom_exercises")
+    .insert({ name: p.name, pattern: p.pattern, equip: p.equip, level: p.level, muscles: p.muscles || "" })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+export async function deleteCustomExercise(id) {
+  if (!supabase) return;
+  const { error } = await supabase.from("custom_exercises").delete().eq("id", id);
+  if (error) throw error;
+}
