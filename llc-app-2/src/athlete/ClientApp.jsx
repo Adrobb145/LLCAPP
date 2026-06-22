@@ -314,6 +314,6 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
     {ciOpen&&<AthCheckin onClose={()=>setCiOpen(false)} onSave={v=>{onAddCheckin({date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"}),...v});onXP(75);setCiOpen(false);pop("📋 Check-in sent to coach · +75 XP");}}/>}
     {recapOpen&&<WeeklyRecap client={client} program={program} clogs={clogs} bodylog={bodylog} misses={misses} stats={stats} cw={cw} onSend={t=>{onSendChat(t);pop("📈 Recap sent to your coach");}} onClose={()=>setRecapOpen(false)}/>}
     {profileOpen&&<Profile name={client.name} email={client.email||""} onClose={()=>setProfileOpen(false)}/>}
-    {pickLift&&<ExercisePicker onPick={ex=>{const cur=(trackedLifts&&trackedLifts.length?trackedLifts:DEFAULT_LIFTS).filter(id=>EXBYID[id]);if(!cur.includes(ex.id)&&cur.length<7&&onSetTracked)onSetTracked([...cur,ex.id]);setPickLift(false);}} onClose={()=>setPickLift(false)}/>}
+    {tab==="progress"&&pickLift&&<ExercisePicker onPick={ex=>{const cur=(trackedLifts&&trackedLifts.length?trackedLifts:DEFAULT_LIFTS).filter(id=>EXBYID[id]);if(!cur.includes(ex.id)&&cur.length<7&&onSetTracked)onSetTracked([...cur,ex.id]);setPickLift(false);}} onClose={()=>setPickLift(false)}/>}
   </div>);
 }
