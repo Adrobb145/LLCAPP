@@ -94,6 +94,7 @@ export default function App(){
   const setTrackedLifts=(cid,arr)=>setTracked(p=>({...p,[cid]:arr}));
   const logBody=(cid,e)=>setBodylog(p=>({...p,[cid]:[...(p[cid]||[]),e]}));
   const addPhoto=(cid,ph)=>setPhotos(p=>({...p,[cid]:[...(p[cid]||[]),ph]}));
+  const delPhoto=(cid,id)=>setPhotos(p=>({...p,[cid]:(p[cid]||[]).filter(x=>x.id!==id)}));
   const useFreeze=(cid)=>setFreezes(f=>({...f,[cid]:Math.max(0,(f[cid]||0)-1)}));
   const setCheckinDay=(cid,day)=>setCkday(p=>({...p,[cid]:day}));
   const addSession=(cid,s)=>setAttendance(p=>({...p,[cid]:[...(p[cid]||[]),s]}));
@@ -143,6 +144,7 @@ export default function App(){
     stripClientLocal(id);setEditId(null);setView("roster");
   };
   const addFormVid=(cid,entry,url)=>{setFormvids(p=>({...p,[cid]:[entry,...(p[cid]||[])]}));setVidUrls(u=>({...u,[entry.id]:url}));};
+  const delFormVid=(cid,id)=>setFormvids(p=>({...p,[cid]:(p[cid]||[]).filter(x=>x.id!==id)}));
   const reviewFormVid=(cid,id,feedback)=>{const v=(formvids[cid]||[]).find(x=>x.id===id);setFormvids(p=>({...p,[cid]:(p[cid]||[]).map(x=>x.id===id?{...x,feedback,status:"reviewed"}:x)}));onAddNote(cid,"🎥 Form review — "+(v?v.label:"your clip")+": "+feedback,"coach");};
 
   const client=clients.find(c=>c.id===clientId)||clients[0];
@@ -176,7 +178,7 @@ export default function App(){
     if(!authClient)return(<ClientAuth clients={clients} onLogin={setAuthClient} onBack={()=>setRole(null)}/>);
     const cc=clients.find(c=>c.id===authClient.id)||clients[0];
     const coachOf=coaches.find(c=>c.id===cc.coachId);
-    return(<ClientApp client={cc} program={programs[cc.id]} clogs={logs[cc.id]||{}} meals={meals[cc.id]||[]} notes={notes[cc.id]||[]} goals={goals[cc.id]||[]} bodylog={bodylog[cc.id]||[]} checkins={checkins[cc.id]||[]} xp={xp[cc.id]||0} coachName={coachOf?coachOf.name.split(" ")[0]:""} photos={photos[cc.id]||[]} freezes={freezes[cc.id]||0} ckday={ckday[cc.id]||""} pillaracts={pillaracts[cc.id]||{}} formvids={formvids[cc.id]||[]} vidUrls={vidUrls} onAddFormVid={(entry,url)=>addFormVid(cc.id,entry,url)} onSetAct={(pid,actId,on)=>setPillarAct(cc.id,pid,actId,on)} onToggleHabit={pid=>toggleHabit(cc.id,pid)} onLogMeal={m=>logMeal(cc.id,m)} onSaveSession={entries=>{saveClientSession(cc.id,entries);addSession(cc.id,{id:"sa"+Date.now(),date:new Date().toISOString().split("T")[0],type:"Program",rate:0,attended:true});}} onXP={amt=>addXP(cc.id,amt)} onAddCheckin={ci=>addCheckin(cc.id,ci)} onSaveGoals={arr=>saveGoals(cc.id,arr)} trackedLifts={tracked[cc.id]||[]} onSetTracked={arr=>setTrackedLifts(cc.id,arr)} onLogBody={e=>logBody(cc.id,e)} onSendChat={text=>onAddNote(cc.id,text,"client")} onAIReply={text=>onAddNote(cc.id,text,"ai")} onAddPhoto={ph=>addPhoto(cc.id,ph)} onUseFreeze={()=>useFreeze(cc.id)} onSetCkday={day=>setCheckinDay(cc.id,day)} misses={misses[cc.id]||[]} onLogMiss={rec=>{logMiss(cc.id,rec);onAddNote(cc.id,"Missed "+rec.dayName+" ("+rec.date+") — "+rec.reason,"client");}} onLogReadiness={rec=>logReadiness(cc.id,rec)} onLogout={doLogout}/>);
+    return(<ClientApp client={cc} program={programs[cc.id]} clogs={logs[cc.id]||{}} meals={meals[cc.id]||[]} notes={notes[cc.id]||[]} goals={goals[cc.id]||[]} bodylog={bodylog[cc.id]||[]} checkins={checkins[cc.id]||[]} xp={xp[cc.id]||0} coachName={coachOf?coachOf.name.split(" ")[0]:""} photos={photos[cc.id]||[]} freezes={freezes[cc.id]||0} ckday={ckday[cc.id]||""} pillaracts={pillaracts[cc.id]||{}} formvids={formvids[cc.id]||[]} vidUrls={vidUrls} onAddFormVid={(entry,url)=>addFormVid(cc.id,entry,url)} onSetAct={(pid,actId,on)=>setPillarAct(cc.id,pid,actId,on)} onToggleHabit={pid=>toggleHabit(cc.id,pid)} onLogMeal={m=>logMeal(cc.id,m)} onSaveSession={entries=>{saveClientSession(cc.id,entries);addSession(cc.id,{id:"sa"+Date.now(),date:new Date().toISOString().split("T")[0],type:"Program",rate:0,attended:true});}} onXP={amt=>addXP(cc.id,amt)} onAddCheckin={ci=>addCheckin(cc.id,ci)} onSaveGoals={arr=>saveGoals(cc.id,arr)} trackedLifts={tracked[cc.id]||[]} onSetTracked={arr=>setTrackedLifts(cc.id,arr)} onLogBody={e=>logBody(cc.id,e)} onSendChat={text=>onAddNote(cc.id,text,"client")} onAIReply={text=>onAddNote(cc.id,text,"ai")} onAddPhoto={ph=>addPhoto(cc.id,ph)} onDeletePhoto={id=>delPhoto(cc.id,id)} onDeleteFormVid={id=>delFormVid(cc.id,id)} onUseFreeze={()=>useFreeze(cc.id)} onSetCkday={day=>setCheckinDay(cc.id,day)} misses={misses[cc.id]||[]} onLogMiss={rec=>{logMiss(cc.id,rec);onAddNote(cc.id,"Missed "+rec.dayName+" ("+rec.date+") — "+rec.reason,"client");}} onLogReadiness={rec=>logReadiness(cc.id,rec)} onLogout={doLogout}/>);
   }
   if(!authCoach)return(<CoachAuth coaches={coaches} onLogin={setAuthCoach}/>);
 
@@ -211,7 +213,7 @@ export default function App(){
         {view==="sessions"&&<SessionsTracker clients={clients} coaches={coaches} attendance={attendance} authCoach={authCoach} onAddSession={addSession} onToggleAttended={toggleAttended} onRemoveSession={removeSession}/>}
         {view==="builder"&&(client?<ProgramBuilder client={client} program={program} onEditEx={editEx} onAddEx={addEx} onRemoveEx={removeEx} onReorderEx={reorderEx} onRenameDay={renameDay} onSetDow={setDow} onAddDay={addDay} onRemoveDay={removeDay} onSetPillarTarget={setPillarTarget} onSetNutrition={setNutrition}/>:emptyClient)}
         {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} onEditEx={editEx} onSetWeeks={setWeeks} onAddEx={addEx} onRemoveEx={removeEx} onAdvanceWeek={advanceWeek}/>:emptyClient)}
-        {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={addEx} onRemoveEx={removeEx} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)}/>:emptyClient)}
+        {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={addEx} onRemoveEx={removeEx} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)} photos={photos[client.id]||[]}/>:emptyClient)}
         {view==="team"&&<Team coaches={coaches} clients={clients} onMoveClient={moveClient} onRemoveCoach={removeCoach} onAddCoach={addCoach} isOwner={isOwner} onInviteCoach={hasBackend&&isOwner?()=>setInviteCoachOpen(true):null}/>}
       </div>
     </div>
