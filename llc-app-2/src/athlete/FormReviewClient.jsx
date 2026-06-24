@@ -3,7 +3,7 @@ import { useState } from "react";
 import { MAINLIFTS } from "../constants/gamification";
 import { D } from "../theme/tokens";
 
-export default function FormReviewClient({formvids,vidUrls,onSubmit}){
+export default function FormReviewClient({formvids,vidUrls,onSubmit,onDelete}){
   const [lift,setLift]=useState(MAINLIFTS[0]);
   const [pending,setPending]=useState(null);
   const pick=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;setPending({url:URL.createObjectURL(f),name:f.name});};
@@ -19,7 +19,7 @@ export default function FormReviewClient({formvids,vidUrls,onSubmit}){
       {pending&&<div><video src={pending.url} controls playsInline style={{width:"100%",borderRadius:8,maxHeight:260,background:"#000"}}/><button onClick={send} style={{width:"100%",marginTop:8,background:D.acc,color:"#0B0B0C",border:0,borderRadius:7,padding:11,fontWeight:800,fontFamily:"'Archivo Black',sans-serif",fontSize:12,cursor:"pointer"}}>SEND TO COACH · +15 XP</button></div>}
     </div>
     {formvids.length>0&&<div style={{display:"flex",flexDirection:"column",gap:8}}>{formvids.map(v=>{const url=vidUrls[v.id];const reviewed=v.status==="reviewed";return(<div key={v.id} style={{background:D.card,border:`1px solid ${reviewed?D.good+"55":D.line}`,borderLeft:`3px solid ${reviewed?D.good:"#FFB23A"}`,borderRadius:10,padding:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:(url||(reviewed&&v.feedback))?9:0}}><div><div style={{fontWeight:600,fontSize:13}}>{v.label}</div><div style={{fontSize:10,color:D.sub}}>Sent {v.date}</div></div><span style={{fontSize:9.5,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:reviewed?D.good:"#FFB23A"}}>{reviewed?"✓ Reviewed":"⏳ Pending"}</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:(url||(reviewed&&v.feedback))?9:0}}><div><div style={{fontWeight:600,fontSize:13}}>{v.label}</div><div style={{fontSize:10,color:D.sub}}>Sent {v.date}</div></div><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:9.5,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:reviewed?D.good:"#FFB23A"}}>{reviewed?"✓ Reviewed":"⏳ Pending"}</span>{onDelete&&<button onClick={()=>{if(window.confirm("Delete this clip submission?"+(reviewed?" The coach\u2019s feedback will be removed too.":"")))onDelete(v.id);}} title="Delete" style={{background:"transparent",border:0,color:D.sub,fontSize:14,cursor:"pointer",padding:0,lineHeight:1}}>🗑</button>}</div></div>
       {url?<video src={url} controls playsInline style={{width:"100%",borderRadius:8,maxHeight:240,background:"#000"}}/>:<div style={{fontSize:10.5,color:D.sub,fontStyle:"italic"}}>Clip is cached for this session only — preview clears on reload, but your coach's notes stay.</div>}
       {reviewed&&v.feedback&&<div style={{background:D.good+"12",border:`1px solid ${D.good}33`,borderRadius:8,padding:"9px 11px",marginTop:9}}><div style={{fontSize:9.5,color:D.good,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase"}}>Coach feedback</div><div style={{marginTop:3,fontSize:12.5,lineHeight:1.5}}>{v.feedback}</div></div>}
     </div>);})}</div>}
