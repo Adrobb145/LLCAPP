@@ -57,7 +57,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
 
   if(run){const day=program&&program.days.find(d=>d.id===run);if(!day)return null;
     return(<div style={{minHeight:"100vh",background:D.bg,color:D.ink,fontFamily:"'Inter Tight',system-ui,sans-serif",maxWidth:480,margin:"0 auto"}}><style>{FONTS}</style>
-      <SessionRunner day={day} week={cw} total={client.totalWeeks} clogs={clogs} onReady={r=>{onLogReadiness({date:today,...r});if(r.sleep<=4||r.soreness>=8||r.energy<=3)onSendChat("⚠️ Readiness flag before "+day.name+" — sleep "+r.sleep+", energy "+r.energy+", soreness "+r.soreness+"/10");}} onCancel={()=>setRun(null)} onDone={entries=>{
+      <SessionRunner day={day} week={cw} total={client.totalWeeks} clogs={clogs} onSwapNote={msg=>onSendChat(msg)} onReady={r=>{onLogReadiness({date:today,...r});if(r.sleep<=4||r.soreness>=8||r.energy<=3)onSendChat("⚠️ Readiness flag before "+day.name+" — sleep "+r.sleep+", energy "+r.energy+", soreness "+r.soreness+"/10");}} onCancel={()=>setRun(null)} onDone={entries=>{
         const before=stats.prs;let pr=false;
         Object.entries(entries).forEach(([k,v])=>{const exId=k.split("|")[2];const ex=EXBYID[exId];if(!ex||!MAINLIFTS.includes(ex.n))return;v.sets.forEach(s=>{if(s.done){const est=e1rm(Number(s.w)||0,Number(s.r)||0);const prev=before[ex.n];if(est>0&&(!prev||est>prev.e))pr=true;}});});
         const sessKey=`w${cw}|${day.id}`;
