@@ -31,9 +31,9 @@ const XPCSS = `
 .xp-btn.sec{background:#1A1A1D;color:#F5F4F0;border:1px solid #2A2A2F;}
 `;
 
-export default function ExercisePicker({ onPick, onClose, allowCustom }) {
+export default function ExercisePicker({ onPick, onClose, allowCustom, initialPat }) {
   const [s, setS] = useState("");
-  const [p, setP] = useState("all");
+  const [p, setP] = useState(initialPat || "all");
   const [eq, setEq] = useState("all");
   const [lv, setLv] = useState("all");
   const [, force] = useState(0);
