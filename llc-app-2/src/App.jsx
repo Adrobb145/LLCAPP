@@ -144,7 +144,7 @@ export default function App(){
     stripClientLocal(id);setEditId(null);setView("roster");
   };
   const addFormVid=(cid,entry,url)=>{setFormvids(p=>({...p,[cid]:[entry,...(p[cid]||[])]}));setVidUrls(u=>({...u,[entry.id]:url}));};
-  const delFormVid=(cid,id)=>setFormvids(p=>({...p,[cid]:(p[cid]||[]).filter(x=>x.id!==id)}));
+  const delFormVid=(cid,id)=>{const v=(formvids[cid]||[]).find(x=>x.id===id);if(v&&v.path)db.deleteFormVideo(v.path);setFormvids(p=>({...p,[cid]:(p[cid]||[]).filter(x=>x.id!==id)}));};
   const reviewFormVid=(cid,id,feedback)=>{const v=(formvids[cid]||[]).find(x=>x.id===id);setFormvids(p=>({...p,[cid]:(p[cid]||[]).map(x=>x.id===id?{...x,feedback,status:"reviewed"}:x)}));onAddNote(cid,"🎥 Form review — "+(v?v.label:"your clip")+": "+feedback,"coach");};
 
   const client=clients.find(c=>c.id===clientId)||clients[0];
