@@ -5,16 +5,20 @@ import { EXBYID } from "../constants/exercises";
 import { modOf } from "../constants/modalities";
 import { D } from "../theme/tokens";
 import ModTag from "../shared/ModTag";
+import ExercisePicker from "../shared/ExercisePicker";
 
-export default function SessionRunner({day,week,total,clogs,onDone,onCancel,onReady}){
+export default function SessionRunner({day,week,total,clogs,onDone,onCancel,onReady,onSwapNote}){
   const [phase,setPhase]=useState(onReady?"ready":"log");
   const [rd,setRd]=useState({sleep:7,energy:7,soreness:5});
   const dl=isDeload(week,total);
   const [data,setData]=useState(()=>day.ex.map(x=>{const cur=clogs[`w${week}|${day.id}|${x.exId}`];const cs=cur&&cur.sets&&cur.sets.length?cur.sets:null;const last=clogs[`w${week-1}|${day.id}|${x.exId}`];const ls=last?last.sets:null;return{exId:x.exId,name:EXBYID[x.exId]?EXBYID[x.exId].n:"?",mod:x.mod,tempo:x.tempo,grp:x.grp,rpe:cs&&cs[0]&&cs[0].rpe!=null?cs[0].rpe:null,sets:Array.from({length:x.sets},(_,i)=>cs&&cs[i]?{w:cs[i].w,r:cs[i].r,done:!!cs[i].done}:{w:dl?targetW(x,week,total):(ls&&ls[i]?ls[i].w:targetW(x,week,total)),r:dReps(x,week,total),done:false})};}));
   const upd=(ei,si,patch)=>setData(p=>p.map((e,i)=>i!==ei?e:{...e,sets:e.sets.map((s,j)=>j!==si?s:{...s,...patch})}));
   const setRpe=(ei,v)=>setData(p=>p.map((e,i)=>i!==ei?e:{...e,rpe:v}));
+  const [swapEi,setSwapEi]=useState(null);
+  const doSwap=(ei,ex)=>{setData(p=>p.map((e,i)=>{if(i!==ei)return e;return{...e,name:ex.n,swapTo:ex.id,swapToName:ex.n,origName:e.origName||e.name};}));setSwapEi(null);};
+  const revertSwap=(ei)=>setData(p=>p.map((e,i)=>{if(i!==ei||!e.swapTo)return e;const{swapTo,swapToName,...rest}=e;return{...rest,name:e.origName||e.name};}));
   const tot=data.reduce((a,e)=>a+e.sets.length,0),done=data.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
-  const finish=()=>{const entries={};data.forEach(e=>{entries[`w${week}|${day.id}|${e.exId}`]={note:"",sets:e.sets.map(s=>({w:Number(s.w)||0,r:Number(s.r)||0,rpe:e.rpe,done:s.done}))};});onDone(entries);};
+  const finish=()=>{const entries={};const swaps=[];data.forEach(e=>{if(e.swapTo)swaps.push((e.origName||"?")+" → "+e.swapToName);entries[`w${week}|${day.id}|${e.exId}`]={note:e.swapTo?("Swapped to "+e.swapToName):"",sets:e.sets.map(s=>({w:Number(s.w)||0,r:Number(s.r)||0,rpe:e.rpe,done:s.done}))};});if(swaps.length&&onSwapNote)onSwapNote("🔁 "+day.name+" — swapped: "+swaps.join(", "));onDone(entries);};
   if(phase==="ready"){
     const R=[["sleep","Sleep","😴"],["energy","Energy","⚡"],["soreness","Soreness","💢"]];
     return(<div style={{padding:"14px 14px 40px"}}>
@@ -30,7 +34,7 @@ export default function SessionRunner({day,week,total,clogs,onDone,onCancel,onRe
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}><button onClick={onCancel} style={{background:D.card,border:`1px solid ${D.line}`,color:D.acc,borderRadius:6,padding:"6px 10px",cursor:"pointer",fontWeight:700}}>←</button><div><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:16}}>{day.name}</div><div style={{fontSize:10,color:D.sub}}>Week {week}{dl?" · Deload":""} · {done}/{tot} sets</div></div></div>
     {dl&&<div style={{background:"rgba(255,107,44,.1)",border:`1px solid ${D.acc}55`,borderRadius:9,padding:"10px 12px",marginBottom:10,fontSize:12,color:"#FFB23A",lineHeight:1.45}}>🪶 <b>Deload week.</b> Loads are intentionally light and reps trimmed. Move fast and clean — don't chase grinders. This is how you show up fresh next block.</div>}
     {data.map((e,ei)=>(<div key={ei} style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:9,padding:11,marginBottom:8}}>
-      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:7,flexWrap:"wrap"}}><span style={{fontWeight:600,fontSize:13}}>{e.name}</span><ModTag x={e}/></div>
+      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:7,flexWrap:"wrap"}}><span style={{fontWeight:600,fontSize:13}}>{e.name}</span><ModTag x={e}/><button onClick={()=>setSwapEi(ei)} style={{marginLeft:"auto",background:"transparent",border:`1px solid ${D.line}`,color:D.sub,borderRadius:6,padding:"3px 9px",fontSize:10.5,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🔁 Swap</button></div>{e.swapTo&&<div style={{fontSize:10.5,color:D.acc,marginTop:-3,marginBottom:7,display:"flex",alignItems:"center",gap:8}}>🔁 Swapped from {e.origName}<span onClick={()=>revertSwap(ei)} style={{color:D.sub,textDecoration:"underline",cursor:"pointer"}}>undo</span></div>}
       {modOf(e).id!=="straight"&&<div style={{fontSize:10.5,color:modOf(e).color,marginBottom:7,marginTop:-3,lineHeight:1.4}}>{modOf(e).desc}</div>}
       <div style={{display:"grid",gridTemplateColumns:"22px 1fr 1fr 34px",gap:6,marginBottom:4,fontSize:8.5,color:"#54534D",letterSpacing:".06em",textTransform:"uppercase",textAlign:"center"}}><div></div><div>Weight</div><div>Reps</div><div></div></div>
       {e.sets.map((s,si)=>(<div key={si} style={{display:"grid",gridTemplateColumns:"22px 1fr 1fr 34px",gap:6,alignItems:"center",marginBottom:5}}>
@@ -42,5 +46,6 @@ export default function SessionRunner({day,week,total,clogs,onDone,onCancel,onRe
       <div style={{display:"flex",alignItems:"center",gap:5,marginTop:8,paddingTop:8,borderTop:`1px solid ${D.line}`}}><span style={{fontSize:9,color:D.sub,letterSpacing:".08em",textTransform:"uppercase",fontWeight:700,marginRight:2}}>RPE</span>{RPE.map(v=>(<button key={v} onClick={()=>setRpe(ei,v===e.rpe?null:v)} style={{flex:1,padding:"6px 0",borderRadius:6,border:`1px solid ${e.rpe===v?D.acc:D.line}`,background:e.rpe===v?D.acc:"transparent",color:e.rpe===v?"#0B0B0C":D.sub,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,cursor:"pointer"}}>{v}</button>))}</div>
     </div>))}
     <button onClick={finish} style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 28px)",maxWidth:452,background:D.acc,color:"#0B0B0C",border:0,borderRadius:8,padding:14,fontFamily:"'Archivo Black',sans-serif",fontSize:13,cursor:"pointer"}}>FINISH & SAVE — {done}/{tot}</button>
+    {swapEi!=null&&<ExercisePicker initialPat={(EXBYID[data[swapEi].exId]||{}).p} onPick={ex=>doSwap(swapEi,ex)} onClose={()=>setSwapEi(null)}/>}
   </div>);
 }
