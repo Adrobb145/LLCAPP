@@ -135,3 +135,27 @@ export async function deleteCustomExercise(id) {
   const { error } = await supabase.from("custom_exercises").delete().eq("id", id);
   if (error) throw error;
 }
+
+// ---- form-review videos (Supabase Storage) ---------------------------------
+// Real upload so the coach can actually watch the clip. Files live in the
+// "Movement Video" bucket under {client_id}/{entryId}.{ext}; RLS lets the
+// athlete read their own and the coach read their clients'.
+const VIDEO_BUCKET = "Movement Video";
+export async function uploadFormVideo(clientId, entryId, file) {
+  if (!supabase) return null;
+  const ext = ((file.name || "").split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp4";
+  const path = `${clientId}/${entryId}.${ext}`;
+  const { error } = await supabase.storage.from(VIDEO_BUCKET).upload(path, file, { contentType: file.type || "video/mp4", upsert: true });
+  if (error) throw error;
+  return path;
+}
+export async function signedVideoUrl(path) {
+  if (!supabase || !path) return null;
+  const { data, error } = await supabase.storage.from(VIDEO_BUCKET).createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data?.signedUrl || null;
+}
+export async function deleteFormVideo(path) {
+  if (!supabase || !path) return;
+  try { await supabase.storage.from(VIDEO_BUCKET).remove([path]); } catch (e) { /* best-effort */ }
+}
