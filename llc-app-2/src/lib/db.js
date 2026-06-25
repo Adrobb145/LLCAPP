@@ -159,3 +159,57 @@ export async function deleteFormVideo(path) {
   if (!supabase || !path) return;
   try { await supabase.storage.from(VIDEO_BUCKET).remove([path]); } catch (e) { /* best-effort */ }
 }
+
+// ---- community: challenges + wins feed -------------------------------------
+// Separate from the client_state diff-persist cycle — these write straight to
+// their own tables (RLS-scoped to the premium cohort).
+export async function loadCommunity() {
+  if (!supabase) return { challenges: [], progress: [], wins: [], reactions: [] };
+  const [ch, pr, wn, rx] = await Promise.all([
+    supabase.from("challenges").select("*").eq("active", true).order("created_at", { ascending: false }),
+    supabase.from("challenge_progress").select("*"),
+    supabase.from("wins").select("*").order("created_at", { ascending: false }).limit(120),
+    supabase.from("win_reactions").select("*"),
+  ]);
+  return { challenges: ch.data || [], progress: pr.data || [], wins: wn.data || [], reactions: rx.data || [] };
+}
+export async function createChallenge(c) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("challenges").insert(c).select().single();
+  if (error) throw error; return data;
+}
+export async function endChallenge(id) {
+  if (!supabase) return;
+  await supabase.from("challenges").update({ active: false }).eq("id", id);
+}
+export async function upsertProgress(challengeId, clientId, value) {
+  if (!supabase) return;
+  await supabase.from("challenge_progress")
+    .upsert({ challenge_id: challengeId, client_id: clientId, value, updated_at: new Date().toISOString() }, { onConflict: "challenge_id,client_id" });
+}
+export async function postWin(w) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("wins").insert(w).select().single();
+  if (error) throw error; return data;
+}
+export async function deleteWin(id) {
+  if (!supabase) return;
+  await supabase.from("wins").delete().eq("id", id);
+}
+export async function addReaction(winId, emoji) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("win_reactions").insert({ win_id: winId, emoji }).select().single();
+  if (error) { if (error.code === "23505") return null; throw error; } // already reacted
+  return data;
+}
+export async function removeReaction(winId, emoji) {
+  if (!supabase) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("win_reactions").delete().eq("win_id", winId).eq("emoji", emoji).eq("actor", user.id);
+}
+export async function myAuthId() {
+  if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  return user ? user.id : null;
+}
