@@ -15,6 +15,7 @@ import Spark from "../shared/Spark";
 import PillarRadar from "../shared/PillarRadar";
 import Bar from "../shared/Bar";
 import SessionRunner from "./SessionRunner";
+import Community from "./Community";
 import FormReviewClient from "./FormReviewClient";
 import AthCheckin from "./AthCheckin";
 import WeeklyRecap from "./WeeklyRecap";
@@ -25,7 +26,7 @@ const LIFTCOLORS=["#FF6B2C","#3AE0FF","#A78BFA","#3AE07A","#FFD23A","#FF5DA2","#
 const SHORT={"Back Squat":"Squat","Barbell Bench Press":"Bench","Conventional Deadlift":"Deadlift","Overhead Press":"Press","Power Clean":"Clean","Squat Clean":"Sq Clean","Overhead Squat":"OHS","Clean and Jerk":"C&J","Push Jerk":"Jerk","Front Squat":"F.Squat","Barbell Row":"Row","Snatch":"Snatch","Power Snatch":"P.Snatch","Hang Power Clean":"Hang Cl"};
 const shortName=n=>SHORT[n]||n;
 const DEFAULT_LIFTS=["Back Squat","Barbell Bench Press","Conventional Deadlift","Overhead Press","Power Clean"].map(ID).filter(Boolean);
-export default function ClientApp({client,program,clogs,meals,notes,goals,bodylog,checkins,xp,coachName,onToggleHabit,onLogMeal,onSaveSession,onXP,onAddCheckin,onSaveGoals,onLogBody,onSendChat,onAIReply,photos,freezes,ckday,onAddPhoto,onUseFreeze,onSetCkday,misses,onLogMiss,onLogReadiness,onLogout,pillaracts={},onSetAct,formvids=[],vidUrls={},onAddFormVid,trackedLifts=[],onSetTracked,onDeletePhoto,onDeleteFormVid}){
+export default function ClientApp({client,program,clogs,meals,notes,goals,bodylog,checkins,xp,coachName,onToggleHabit,onLogMeal,onSaveSession,onXP,onAddCheckin,onSaveGoals,onLogBody,onSendChat,onAIReply,photos,freezes,ckday,onAddPhoto,onUseFreeze,onSetCkday,misses,onLogMiss,onLogReadiness,onLogout,pillaracts={},onSetAct,formvids=[],vidUrls={},onAddFormVid,trackedLifts=[],onSetTracked,onDeletePhoto,onDeleteFormVid,communityData,cmUid,cmNames,onPostWin,onReactWin,onDeleteWin}){
   const [tab,setTab]=useState("home");
   const [profileOpen,setProfileOpen]=useState(false);
   const [editLifts,setEditLifts]=useState(false);
@@ -307,9 +308,10 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
         </div>
         <div style={{display:"flex",gap:6}}><input value={chat} onChange={e=>setChat(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&chat.trim()){onSendChat(chat.trim());setChat("");}}} placeholder="Message your coach…" style={{flex:1,background:D.card,border:`1px solid ${D.line}`,borderRadius:8,padding:11,color:D.ink,fontSize:13,outline:"none",fontFamily:"inherit"}}/><button onClick={()=>{if(chat.trim()){onSendChat(chat.trim());setChat("");}}} style={{background:D.acc,color:"#0B0B0C",border:0,borderRadius:8,padding:"0 16px",fontWeight:800,cursor:"pointer"}}>Send</button></div>
       </div>}
+      {tab==="community"&&<Community data={communityData} me={client.id} myUid={cmUid} nameOf={cmNames} coachName={coachName} onPostWin={onPostWin} onReactWin={onReactWin} onDeleteWin={onDeleteWin}/>}
     </div>
 
-    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:D.card,borderTop:`1px solid ${D.line}`,display:"flex",justifyContent:"space-around",padding:"8px 0",paddingBottom:"calc(env(safe-area-inset-bottom) + 8px)",boxShadow:"0 -4px 20px rgba(0,0,0,.45)",zIndex:40}}>{[["home","🏠","Home"],["pillars","🏛","Pillars"],["train","🏋️","Train"],["progress","📈","Progress"],["fuel","🥗","Fuel"],["coach","💬","Coach"]].map(([k,ic,l])=>(<button key={k} onClick={()=>setTab(k)} style={{background:tab===k?D.acc+"1F":"transparent",border:0,borderRadius:9,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"5px 4px",flex:1,minWidth:0}}><span style={{fontSize:18}}>{ic}</span><span style={{fontSize:11,fontWeight:800,color:tab===k?D.acc:"#E8E6E0",letterSpacing:".02em",textTransform:"uppercase"}}>{l}</span></button>))}</div>
+    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:D.card,borderTop:`1px solid ${D.line}`,display:"flex",justifyContent:"space-around",padding:"8px 0",paddingBottom:"calc(env(safe-area-inset-bottom) + 8px)",boxShadow:"0 -4px 20px rgba(0,0,0,.45)",zIndex:40}}>{[["home","🏠","Home"],["pillars","🏛","Pillars"],["train","🏋️","Train"],["progress","📈","Progress"],["fuel","🥗","Fuel"],["community","🤝","Crew"],["coach","💬","Coach"]].map(([k,ic,l])=>(<button key={k} onClick={()=>setTab(k)} style={{background:tab===k?D.acc+"1F":"transparent",border:0,borderRadius:9,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"5px 4px",flex:1,minWidth:0}}><span style={{fontSize:18}}>{ic}</span><span style={{fontSize:11,fontWeight:800,color:tab===k?D.acc:"#E8E6E0",letterSpacing:".02em",textTransform:"uppercase"}}>{l}</span></button>))}</div>
 
     {ciOpen&&<AthCheckin onClose={()=>setCiOpen(false)} onSave={v=>{onAddCheckin({date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"}),...v});onXP(75);setCiOpen(false);pop("📋 Check-in sent to coach · +75 XP");}}/>}
     {recapOpen&&<WeeklyRecap client={client} program={program} clogs={clogs} bodylog={bodylog} misses={misses} stats={stats} cw={cw} onSend={t=>{onSendChat(t);pop("📈 Recap sent to your coach");}} onClose={()=>setRecapOpen(false)}/>}
