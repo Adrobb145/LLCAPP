@@ -116,10 +116,11 @@ export default function App(){
   // ---- community: derived scoring + auto-wins -------------------------------
   const nameOf=Object.fromEntries(clients.map(c=>[c.id,(c.name||"Athlete").split(" ")[0]]));
   const countLeaves=(o)=>{let n=0;const walk=v=>{if(v===true)n++;else if(v&&typeof v==="object")Object.values(v).forEach(walk);};walk(o);return n;};
-  const computeMetric=(cid,metric)=>{
-    if(metric==="sessions")return (attendance[cid]||[]).filter(a=>a.attended!==false).length;
-    if(metric==="checkins")return (checkins[cid]||[]).length;
-    if(metric==="pillar_points")return countLeaves(pillaracts[cid]||{});
+  const computeMetric=(cid,ch)=>{
+    const since=ch&&ch.starts_on?ch.starts_on:null;const m=ch?ch.metric:null;
+    if(m==="sessions")return (attendance[cid]||[]).filter(a=>a.attended!==false&&(!since||(a.date||"")>=since)).length;
+    if(m==="checkins")return (checkins[cid]||[]).length; // display-string dates; cumulative until ISO-dated
+    if(m==="pillar_points"){const o=pillaracts[cid]||{};let n=0;Object.entries(o).forEach(([dt,pl])=>{if(since&&dt<since)return;const walk=v=>{if(v===true)n++;else if(v&&typeof v==="object")Object.values(v).forEach(walk);};walk(pl);});return n;}
     return null;
   };
   const upsertProgLocal=(arr,chId,cid,val)=>{const i=arr.findIndex(p=>p.challenge_id===chId&&p.client_id===cid);if(i<0)return [...arr,{challenge_id:chId,client_id:cid,value:val}];const c=arr.slice();c[i]={...c[i],value:val};return c;};
@@ -137,7 +138,7 @@ export default function App(){
     if(!hasBackend||role!=="client"||!authClient)return;
     const cid=authClient.id;
     community.challenges.forEach(ch=>{
-      const val=computeMetric(cid,ch.metric);
+      const val=computeMetric(cid,ch);
       if(val==null)return;
       if(progRef.current[ch.id]===val)return;
       progRef.current[ch.id]=val;
