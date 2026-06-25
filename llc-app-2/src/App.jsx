@@ -1,6 +1,7 @@
 // App.jsx — root: state, persistence (window.storage), role routing & view dispatch
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import SaveErrorBar from "./shared/SaveErrorBar";
+import CommunityCoach from "./coach/CommunityCoach";
 import { hasBackend } from "./lib/supabase";
 import * as db from "./lib/db";
 import AuthGate from "./auth/AuthGate";
@@ -52,6 +53,8 @@ export default function App(){
   const [misses,setMisses]=useState({});
   const [readiness,setReadiness]=useState({});
   const [pillaracts,setPillaracts]=useState(hasBackend?{}:seedPillarActs);
+  const [community,setCommunity]=useState({challenges:[],progress:[],wins:[],reactions:[]});
+  const [myUid,setMyUid]=useState(null);
   const [formvids,setFormvids]=useState({});
   const [vidUrls,setVidUrls]=useState({});
   const [tracked,setTracked]=useState({});
@@ -76,6 +79,8 @@ export default function App(){
       db.primeCache({coaches:co,clients:cl,state:stateById});
       setPrograms(m.programs);setLogs(m.logs);setNotes(m.notes);setMeals(m.meals);setXp(m.xp);setGoals(m.goals);setCheckins(m.checkins);setBodylog(m.bodylog);setPhotos(m.photos);setFreezes(m.freezes);setCkday(m.ckday);setAttendance(m.attendance);setMisses(m.misses);setReadiness(m.readiness);if(Object.keys(m.pillaracts).length)setPillaracts(m.pillaracts);setFormvids(m.formvids);setTracked(m.tracked);
       try{const cx=await db.loadCustomExercises();setCustomExercises(cx);setCustTick(t=>t+1);}catch(e){console.error("LLC custom-ex load",e);}
+      try{const cm=await db.loadCommunity();setCommunity(cm);}catch(e){console.error("LLC community load",e);}
+      db.myAuthId().then(setMyUid).catch(()=>{});
     }catch(e){console.error("LLC load error",e);}
     setHydrated(true);
   };
@@ -103,6 +108,57 @@ export default function App(){
   const addSession=(cid,s)=>setAttendance(p=>({...p,[cid]:[...(p[cid]||[]),s]}));
   const toggleAttended=(cid,id)=>setAttendance(p=>({...p,[cid]:(p[cid]||[]).map(s=>s.id===id?{...s,attended:!s.attended}:s)}));
   const removeSession=(cid,id)=>setAttendance(p=>({...p,[cid]:(p[cid]||[]).filter(s=>s.id!==id)}));
+
+  // ---- community: derived scoring + auto-wins -------------------------------
+  const nameOf=Object.fromEntries(clients.map(c=>[c.id,(c.name||"Athlete").split(" ")[0]]));
+  const countLeaves=(o)=>{let n=0;const walk=v=>{if(v===true)n++;else if(v&&typeof v==="object")Object.values(v).forEach(walk);};walk(o);return n;};
+  const computeMetric=(cid,metric)=>{
+    if(metric==="sessions")return (attendance[cid]||[]).filter(a=>a.attended!==false).length;
+    if(metric==="checkins")return (checkins[cid]||[]).length;
+    if(metric==="pillar_points")return countLeaves(pillaracts[cid]||{});
+    return null;
+  };
+  const upsertProgLocal=(arr,chId,cid,val)=>{const i=arr.findIndex(p=>p.challenge_id===chId&&p.client_id===cid);if(i<0)return [...arr,{challenge_id:chId,client_id:cid,value:val}];const c=arr.slice();c[i]={...c[i],value:val};return c;};
+  const postWinFor=(cid,w)=>{const win={client_id:cid,kind:w.kind||"note",title:w.title,detail:w.detail||"",icon:w.icon||"🔥",visible:w.visible!==false};db.postWin(win).then(sv=>{if(sv)setCommunity(c=>({...c,wins:[sv,...c.wins]}));}).catch(e=>console.error("LLC win",e));};
+  const deleteWinFor=(id)=>{setCommunity(c=>({...c,wins:c.wins.filter(w=>w.id!==id),reactions:c.reactions.filter(r=>r.win_id!==id)}));db.deleteWin(id).catch(()=>{});};
+  const reactWin=(winId,emoji,on)=>{
+    if(on){setCommunity(c=>({...c,reactions:[...c.reactions,{win_id:winId,emoji,actor:myUid,_opt:true}]}));db.addReaction(winId,emoji).then(r=>{if(r)setCommunity(c=>({...c,reactions:c.reactions.map(x=>(x._opt&&x.win_id===winId&&x.emoji===emoji)?r:x)}));}).catch(()=>{});}
+    else{setCommunity(c=>({...c,reactions:c.reactions.filter(r=>!(r.win_id===winId&&r.emoji===emoji&&r.actor===myUid))}));db.removeReaction(winId,emoji).catch(()=>{});}
+  };
+  const createChallengeFor=async(c)=>{const sv=await db.createChallenge(c);if(sv)setCommunity(s2=>({...s2,challenges:[sv,...s2.challenges]}));return sv;};
+  const endChallengeFor=(id)=>{setCommunity(s2=>({...s2,challenges:s2.challenges.filter(c=>c.id!==id)}));db.endChallenge(id).catch(()=>{});};
+  const progRef=useRef({});
+  const wonRef=useRef(new Set());
+  useEffect(()=>{
+    if(!hasBackend||role!=="client"||!authClient)return;
+    const cid=authClient.id;
+    community.challenges.forEach(ch=>{
+      const val=computeMetric(cid,ch.metric);
+      if(val==null)return;
+      if(progRef.current[ch.id]===val)return;
+      progRef.current[ch.id]=val;
+      db.upsertProgress(ch.id,cid,val).catch(()=>{});
+      setCommunity(c=>({...c,progress:upsertProgLocal(c.progress,ch.id,cid,val)}));
+    });
+  },[attendance,checkins,pillaracts,community.challenges,role,authClient]);
+  useEffect(()=>{
+    if(!hasBackend||role!=="client"||!authClient)return;
+    const cid=authClient.id;
+    const defs=[
+      {n:(attendance[cid]||[]).filter(a=>a.attended!==false).length,ms:[10,25,50,100,150,200,300],kind:"session",icon:"🏋️",label:v=>v+" sessions logged"},
+      {n:(checkins[cid]||[]).length,ms:[5,10,25,50,100,150],kind:"checkin",icon:"✅",label:v=>v+" check-ins — consistency on lock"},
+    ];
+    defs.forEach(({n,ms,kind,icon,label})=>{
+      const hit=ms.filter(m=>n>=m).pop();
+      if(!hit)return;
+      const title=label(hit);
+      const tag=cid+"|"+title;
+      if(wonRef.current.has(tag))return;
+      if(community.wins.some(w=>w.client_id===cid&&w.title===title)){wonRef.current.add(tag);return;}
+      wonRef.current.add(tag);
+      postWinFor(cid,{kind,title,icon});
+    });
+  },[attendance,checkins,role,authClient,community.wins]);
   const logMiss=(cid,rec)=>setMisses(p=>({...p,[cid]:[...(p[cid]||[]),rec]}));
   const logReadiness=(cid,rec)=>setReadiness(p=>({...p,[cid]:[...(p[cid]||[]),rec]}));
   const setNutrition=(cid,nt)=>setClients(p=>p.map(c=>c.id!==cid?c:{...c,nt}));
@@ -181,7 +237,7 @@ export default function App(){
     if(!authClient)return(<ClientAuth clients={clients} onLogin={setAuthClient} onBack={()=>setRole(null)}/>);
     const cc=clients.find(c=>c.id===authClient.id)||clients[0];
     const coachOf=coaches.find(c=>c.id===cc.coachId);
-    return(<>{saveErr&&<SaveErrorBar onRetry={retrySave}/>}<ClientApp client={cc} program={programs[cc.id]} clogs={logs[cc.id]||{}} meals={meals[cc.id]||[]} notes={notes[cc.id]||[]} goals={goals[cc.id]||[]} bodylog={bodylog[cc.id]||[]} checkins={checkins[cc.id]||[]} xp={xp[cc.id]||0} coachName={coachOf?coachOf.name.split(" ")[0]:""} photos={photos[cc.id]||[]} freezes={freezes[cc.id]||0} ckday={ckday[cc.id]||""} pillaracts={pillaracts[cc.id]||{}} formvids={formvids[cc.id]||[]} vidUrls={vidUrls} onAddFormVid={(entry,url)=>addFormVid(cc.id,entry,url)} onSetAct={(pid,actId,on)=>setPillarAct(cc.id,pid,actId,on)} onToggleHabit={pid=>toggleHabit(cc.id,pid)} onLogMeal={m=>logMeal(cc.id,m)} onSaveSession={entries=>{saveClientSession(cc.id,entries);addSession(cc.id,{id:"sa"+Date.now(),date:new Date().toISOString().split("T")[0],type:"Program",rate:0,attended:true});}} onXP={amt=>addXP(cc.id,amt)} onAddCheckin={ci=>addCheckin(cc.id,ci)} onSaveGoals={arr=>saveGoals(cc.id,arr)} trackedLifts={tracked[cc.id]||[]} onSetTracked={arr=>setTrackedLifts(cc.id,arr)} onLogBody={e=>logBody(cc.id,e)} onSendChat={text=>onAddNote(cc.id,text,"client")} onAIReply={text=>onAddNote(cc.id,text,"ai")} onAddPhoto={ph=>addPhoto(cc.id,ph)} onDeletePhoto={id=>delPhoto(cc.id,id)} onDeleteFormVid={id=>delFormVid(cc.id,id)} onUseFreeze={()=>useFreeze(cc.id)} onSetCkday={day=>setCheckinDay(cc.id,day)} misses={misses[cc.id]||[]} onLogMiss={rec=>{logMiss(cc.id,rec);onAddNote(cc.id,"Missed "+rec.dayName+" ("+rec.date+") — "+rec.reason,"client");}} onLogReadiness={rec=>logReadiness(cc.id,rec)} onLogout={doLogout}/></>);
+    return(<>{saveErr&&<SaveErrorBar onRetry={retrySave}/>}<ClientApp client={cc} program={programs[cc.id]} clogs={logs[cc.id]||{}} meals={meals[cc.id]||[]} notes={notes[cc.id]||[]} goals={goals[cc.id]||[]} bodylog={bodylog[cc.id]||[]} checkins={checkins[cc.id]||[]} xp={xp[cc.id]||0} coachName={coachOf?coachOf.name.split(" ")[0]:""} photos={photos[cc.id]||[]} freezes={freezes[cc.id]||0} ckday={ckday[cc.id]||""} pillaracts={pillaracts[cc.id]||{}} formvids={formvids[cc.id]||[]} vidUrls={vidUrls} onAddFormVid={(entry,url)=>addFormVid(cc.id,entry,url)} onSetAct={(pid,actId,on)=>setPillarAct(cc.id,pid,actId,on)} onToggleHabit={pid=>toggleHabit(cc.id,pid)} onLogMeal={m=>logMeal(cc.id,m)} onSaveSession={entries=>{saveClientSession(cc.id,entries);addSession(cc.id,{id:"sa"+Date.now(),date:new Date().toISOString().split("T")[0],type:"Program",rate:0,attended:true});}} onXP={amt=>addXP(cc.id,amt)} onAddCheckin={ci=>addCheckin(cc.id,ci)} onSaveGoals={arr=>saveGoals(cc.id,arr)} trackedLifts={tracked[cc.id]||[]} onSetTracked={arr=>setTrackedLifts(cc.id,arr)} onLogBody={e=>logBody(cc.id,e)} onSendChat={text=>onAddNote(cc.id,text,"client")} onAIReply={text=>onAddNote(cc.id,text,"ai")} onAddPhoto={ph=>addPhoto(cc.id,ph)} onDeletePhoto={id=>delPhoto(cc.id,id)} onDeleteFormVid={id=>delFormVid(cc.id,id)} onUseFreeze={()=>useFreeze(cc.id)} onSetCkday={day=>setCheckinDay(cc.id,day)} misses={misses[cc.id]||[]} onLogMiss={rec=>{logMiss(cc.id,rec);onAddNote(cc.id,"Missed "+rec.dayName+" ("+rec.date+") — "+rec.reason,"client");}} onLogReadiness={rec=>logReadiness(cc.id,rec)} communityData={community} cmUid={myUid} cmNames={nameOf} onPostWin={w=>postWinFor(cc.id,w)} onReactWin={reactWin} onDeleteWin={deleteWinFor} onLogout={doLogout}/></>);
   }
   if(!authCoach)return(<CoachAuth coaches={coaches} onLogin={setAuthCoach}/>);
 
@@ -201,6 +257,7 @@ export default function App(){
         <button className="sb-item" data-on={view==="planner"} onClick={()=>setView("planner")}>🗓 Planner</button>
         <button className="sb-item" data-on={view==="sheet"} onClick={()=>setView("sheet")}>📝 Program Sheet{pendingVids>0&&<span className="sb-item-ct" style={{color:"#FFB23A"}}>🎥{pendingVids}</span>}</button>
         <button className="sb-item" data-on={view==="sessions"} onClick={()=>setView("sessions")}>🧾 Sessions</button>
+        <button className="sb-item" data-on={view==="community"} onClick={()=>setView("community")}>🏆 Community</button>
         <button className="sb-item" data-on={view==="team"} onClick={()=>setView("team")}>🏢 Team<span className="sb-item-ct">{coaches.length}</span></button>
       </div></div>
       <div><div className="sb-lbl">Clients</div><div className="sb-cl">{clients.map(c=>{const fvp=(formvids[c.id]||[]).some(v=>v.status!=="reviewed");return(<button key={c.id} className="sb-clrow" data-on={(view==="sheet"||view==="planner"||view==="builder")&&clientId===c.id} onClick={()=>openClient(c.id)}><Avatar txt={c.initials} c={c.accent} size={22}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name.split(" ")[0]}</span>{fvp&&<span title="Form review pending" style={{marginLeft:"auto",fontSize:10}}>🎥</span>}<span style={{marginLeft:fvp?6:"auto",width:6,height:6,borderRadius:"50%",background:c.adherence>.85?"#3AE07A":c.adherence>.7?"#FFB23A":"#54534D"}}/></button>);})}</div></div>
@@ -214,6 +271,7 @@ export default function App(){
         {view==="roster"&&<Roster clients={clients} coaches={coaches} onOpen={openClient} onAddClient={()=>setAddOpen(true)} onEdit={(c)=>setEditId(c.id)} onDelete={removeClient}/>}
         {view==="insights"&&<CoachInsights clients={clients} programs={programs} logs={logs} checkins={checkins} readiness={readiness} onOpen={openClient} onAddCheckin={(cid,ci)=>addCheckin(cid,ci)}/>}
         {view==="sessions"&&<SessionsTracker clients={clients} coaches={coaches} attendance={attendance} authCoach={authCoach} onAddSession={addSession} onToggleAttended={toggleAttended} onRemoveSession={removeSession}/>}
+        {view==="community"&&<CommunityCoach data={community} clients={clients} onCreate={createChallengeFor} onEnd={endChallengeFor}/>}
         {view==="builder"&&(client?<ProgramBuilder client={client} program={program} onEditEx={editEx} onAddEx={addEx} onRemoveEx={removeEx} onReorderEx={reorderEx} onRenameDay={renameDay} onSetDow={setDow} onAddDay={addDay} onRemoveDay={removeDay} onSetPillarTarget={setPillarTarget} onSetNutrition={setNutrition}/>:emptyClient)}
         {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} onEditEx={editEx} onSetWeeks={setWeeks} onAddEx={addEx} onRemoveEx={removeEx} onAdvanceWeek={advanceWeek}/>:emptyClient)}
         {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={addEx} onRemoveEx={removeEx} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)} photos={photos[client.id]||[]}/>:emptyClient)}
