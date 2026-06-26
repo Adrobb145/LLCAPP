@@ -164,14 +164,15 @@ export async function deleteFormVideo(path) {
 // Separate from the client_state diff-persist cycle — these write straight to
 // their own tables (RLS-scoped to the premium cohort).
 export async function loadCommunity() {
-  if (!supabase) return { challenges: [], progress: [], wins: [], reactions: [] };
-  const [ch, pr, wn, rx] = await Promise.all([
+  if (!supabase) return { challenges: [], progress: [], wins: [], reactions: [], comments: [] };
+  const [ch, pr, wn, rx, cm] = await Promise.all([
     supabase.from("challenges").select("*").eq("active", true).order("created_at", { ascending: false }),
     supabase.from("challenge_progress").select("*"),
     supabase.from("wins").select("*").order("created_at", { ascending: false }).limit(120),
     supabase.from("win_reactions").select("*"),
+    supabase.from("win_comments").select("*").order("created_at", { ascending: true }),
   ]);
-  return { challenges: ch.data || [], progress: pr.data || [], wins: wn.data || [], reactions: rx.data || [] };
+  return { challenges: ch.data || [], progress: pr.data || [], wins: wn.data || [], reactions: rx.data || [], comments: cm.data || [] };
 }
 export async function createChallenge(c) {
   if (!supabase) return null;
@@ -190,7 +191,21 @@ export async function upsertProgress(challengeId, clientId, value) {
 export async function postWin(w) {
   if (!supabase) return null;
   const { data, error } = await supabase.from("wins").insert(w).select().single();
+  if (error) { if (error.code === "23505") return null; throw error; } // milestone already posted
+  return data;
+}
+
+export async function addComment(winId, body, authorKind, authorName) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("win_comments")
+    .insert({ win_id: winId, body, author_kind: authorKind || "client", author_name: authorName || "" })
+    .select().single();
   if (error) throw error; return data;
+}
+
+export async function deleteComment(id) {
+  if (!supabase) return;
+  await supabase.from("win_comments").delete().eq("id", id);
 }
 export async function deleteWin(id) {
   if (!supabase) return;
