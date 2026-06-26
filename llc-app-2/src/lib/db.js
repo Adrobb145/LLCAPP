@@ -164,15 +164,16 @@ export async function deleteFormVideo(path) {
 // Separate from the client_state diff-persist cycle — these write straight to
 // their own tables (RLS-scoped to the premium cohort).
 export async function loadCommunity() {
-  if (!supabase) return { challenges: [], progress: [], wins: [], reactions: [], comments: [] };
-  const [ch, pr, wn, rx, cm] = await Promise.all([
+  if (!supabase) return { challenges: [], progress: [], wins: [], reactions: [], comments: [], roster: [] };
+  const [ch, pr, wn, rx, cm, rs] = await Promise.all([
     supabase.from("challenges").select("*").eq("active", true).order("created_at", { ascending: false }),
     supabase.from("challenge_progress").select("*"),
     supabase.from("wins").select("*").order("created_at", { ascending: false }).limit(120),
     supabase.from("win_reactions").select("*"),
     supabase.from("win_comments").select("*").order("created_at", { ascending: true }),
+    supabase.rpc("community_roster"),
   ]);
-  return { challenges: ch.data || [], progress: pr.data || [], wins: wn.data || [], reactions: rx.data || [], comments: cm.data || [] };
+  return { challenges: ch.data || [], progress: pr.data || [], wins: wn.data || [], reactions: rx.data || [], comments: cm.data || [], roster: rs.data || [] };
 }
 export async function createChallenge(c) {
   if (!supabase) return null;
