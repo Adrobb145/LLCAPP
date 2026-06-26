@@ -12,8 +12,70 @@ const METRICS = [
 const inp = { background: C.lift, border: `1px solid ${C.line}`, borderRadius: 7, padding: "9px 11px", color: C.ink, fontSize: 14, outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
 const lbl = { fontSize: 11, color: C.sub, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 5, display: "block" };
 
-export default function CommunityCoach({ data, clients = [], onCreate, onEnd }) {
-  const { challenges = [], progress = [] } = data || {};
+function relTime(iso) {
+  if (!iso) return "";
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  if (s < 604800) return Math.floor(s / 86400) + "d ago";
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function CoachWinRow({ w, nameOf, reactions, comments, onComment, onDeleteComment }) {
+  const [ct, setCt] = useState("");
+  const rx = reactions.filter(r => r.win_id === w.id);
+  const byEmoji = {};
+  rx.forEach(r => { byEmoji[r.emoji] = (byEmoji[r.emoji] || 0) + 1; });
+  const cs = comments.filter(c => c.win_id === w.id);
+  const submit = () => { const t = ct.trim(); if (!t) return; onComment(w.id, t); setCt(""); };
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 11, padding: 13 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <span style={{ fontSize: 20, lineHeight: 1 }}>{w.icon || "🔥"}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{w.title}</div>
+          <div style={{ fontSize: 11, color: C.sub, marginTop: 1 }}>{nameOf[w.client_id] || "Athlete"} · {relTime(w.created_at)}</div>
+        </div>
+        {Object.keys(byEmoji).length > 0 && (
+          <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>{Object.entries(byEmoji).map(([e, n]) => (
+            <span key={e} style={{ fontSize: 12.5 }}>{e}<span style={{ fontSize: 10.5, color: C.sub, fontWeight: 700 }}> {n}</span></span>
+          ))}</div>
+        )}
+      </div>
+      {w.detail ? <div style={{ fontSize: 12.5, color: C.ink, marginTop: 7, lineHeight: 1.45 }}>{w.detail}</div> : null}
+      {cs.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
+          {cs.map(c => {
+            const coach = c.author_kind === "coach";
+            return (
+              <div key={c.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <span style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, background: coach ? C.acc : C.lift, color: coach ? "#0B0B0C" : C.ink, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 800 }}>{(c.author_name || (coach ? "C" : "A")).slice(0, 1).toUpperCase()}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: coach ? C.acc : C.ink }}>{c.author_name || (coach ? "Coach" : "Athlete")}</span>
+                    {coach && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: C.acc, border: `1px solid ${C.acc}66`, borderRadius: 4, padding: "1px 4px" }}>Coach</span>}
+                    <span style={{ fontSize: 9.5, color: C.sub }}>{relTime(c.created_at)}</span>
+                    {onDeleteComment && <button onClick={() => onDeleteComment(c.id)} title="Delete" style={{ marginLeft: "auto", background: "transparent", border: 0, color: C.sub, fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.4, marginTop: 1, wordBreak: "break-word" }}>{c.body}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+        <input value={ct} onChange={e => setCt(e.target.value)} onKeyDown={e => { if (e.key === "Enter") submit(); }} placeholder="Reply as coach…" style={{ ...inp, flex: 1, width: "auto", minWidth: 0, padding: "8px 10px", fontSize: 13 }} />
+        {ct.trim() && <button onClick={submit} style={{ background: C.acc, color: "#0B0B0C", border: 0, borderRadius: 7, padding: "0 13px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>Send</button>}
+      </div>
+    </div>
+  );
+}
+
+export default function CommunityCoach({ data, clients = [], onCreate, onEnd, myUid, onComment, onDeleteComment }) {
+  const { challenges = [], progress = [], wins = [], reactions = [], comments = [] } = data || {};
+  const feed = wins.filter(w => w.visible !== false);
   const today = new Date().toISOString().split("T")[0];
   const in30 = new Date(Date.now() + 30 * 864e5).toISOString().split("T")[0];
   const [f, setF] = useState({ title: "", description: "", metric: "sessions", mode: "collective", goal: "", ends_on: in30 });
@@ -122,6 +184,14 @@ export default function CommunityCoach({ data, clients = [], onCreate, onEnd }) 
           );
         })}
       </div>
+
+      {/* community feed — what athletes are posting */}
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: C.sub, margin: "22px 0 10px" }}>Community feed</div>
+      {feed.length === 0 && <div style={{ fontSize: 13, color: C.sub, fontStyle: "italic" }}>No wins posted yet. When an athlete shares a win or hits a milestone, it lands here — jump in and cheer them on.</div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {feed.map(w => <CoachWinRow key={w.id} w={w} nameOf={nameOf} reactions={reactions} comments={comments} onComment={onComment} onDeleteComment={onDeleteComment} />)}
+      </div>
+
     </div>
   );
 }
