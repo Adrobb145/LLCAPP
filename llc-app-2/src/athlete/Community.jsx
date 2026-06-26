@@ -79,9 +79,14 @@ function ChallengeCard({ ch, parts, me, nameOf }) {
   );
 }
 
-function WinCard({ w, me, myUid, nameOf, reactions, onReactWin, onDeleteWin }) {
+function WinCard({ w, me, myUid, nameOf, reactions, comments = [], onReactWin, onDeleteWin, onAddComment, onDeleteComment }) {
+  const [ct, setCt] = useState("");
+  const [open, setOpen] = useState(false);
   const author = w.client_id === me ? "You" : (nameOf[w.client_id] || "Athlete");
   const rx = reactions.filter(r => r.win_id === w.id);
+  const cs = comments;
+  const shown = open ? cs : cs.slice(-2);
+  const submit = () => { const t = ct.trim(); if (!t) return; onAddComment && onAddComment(w.id, t); setCt(""); setOpen(true); };
   return (
     <div style={{ background: D.card, border: `1px solid ${D.line}`, borderRadius: 12, padding: 13 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -107,12 +112,46 @@ function WinCard({ w, me, myUid, nameOf, reactions, onReactWin, onDeleteWin }) {
           );
         })}
       </div>
+
+      {/* comment thread */}
+      <div style={{ marginTop: 11, borderTop: `1px solid ${D.line}`, paddingTop: 10 }}>
+        {cs.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 9 }}>
+            {!open && cs.length > 2 && (
+              <button onClick={() => setOpen(true)} style={{ alignSelf: "flex-start", background: "transparent", border: 0, color: D.sub, fontSize: 11.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>View all {cs.length} comments</button>
+            )}
+            {shown.map(c => {
+              const coach = c.author_kind === "coach";
+              const canDel = c.author === myUid;
+              return (
+                <div key={c.id} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <span style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: coach ? D.acc : D.lift, color: coach ? "#0B0B0C" : D.ink, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{(c.author_name || (coach ? "C" : "A")).slice(0, 1).toUpperCase()}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: coach ? D.acc : D.ink }}>{c.author_name || (coach ? "Coach" : "Athlete")}</span>
+                      {coach && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: D.acc, border: `1px solid ${D.acc}66`, borderRadius: 4, padding: "1px 4px" }}>Coach</span>}
+                      <span style={{ fontSize: 9.5, color: D.sub }}>{relTime(c.created_at)}</span>
+                      {canDel && onDeleteComment && <button onClick={() => onDeleteComment(c.id)} title="Delete" style={{ marginLeft: "auto", background: "transparent", border: 0, color: D.sub, fontSize: 11, cursor: "pointer", padding: 0, lineHeight: 1 }}>✕</button>}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: D.ink, lineHeight: 1.4, marginTop: 1, wordBreak: "break-word" }}>{c.body}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 6 }}>
+          <input value={ct} onChange={e => setCt(e.target.value)} onKeyDown={e => { if (e.key === "Enter") submit(); }} placeholder="Add a comment…" style={{ flex: 1, minWidth: 0, background: D.lift, border: `1px solid ${D.line}`, borderRadius: 8, padding: "8px 10px", color: D.ink, fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+          {ct.trim() && <button onClick={submit} style={{ background: D.acc, color: "#0B0B0C", border: 0, borderRadius: 8, padding: "0 13px", height: 34, fontWeight: 800, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}>Send</button>}
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function Community({ data, me, myUid, nameOf = {}, coachName, onPostWin, onReactWin, onDeleteWin }) {
-  const { challenges = [], progress = [], wins = [], reactions = [] } = data || {};
+
+export default function Community({ data, me, myUid, nameOf = {}, coachName, onPostWin, onReactWin, onDeleteWin, onAddComment, onDeleteComment }) {
+  const { challenges = [], progress = [], wins = [], reactions = [], comments = [] } = data || {};
   const [text, setText] = useState("");
   const [icon, setIcon] = useState("🔥");
   const visibleWins = wins.filter(w => w.visible !== false || w.client_id === me);
@@ -156,7 +195,7 @@ export default function Community({ data, me, myUid, nameOf = {}, coachName, onP
       {/* feed */}
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
         {visibleWins.map(w => (
-          <WinCard key={w.id} w={w} me={me} myUid={myUid} nameOf={nameOf} reactions={reactions} onReactWin={onReactWin} onDeleteWin={onDeleteWin} />
+          <WinCard key={w.id} w={w} me={me} myUid={myUid} nameOf={nameOf} reactions={reactions} comments={comments.filter(c => c.win_id === w.id)} onReactWin={onReactWin} onDeleteWin={onDeleteWin} onAddComment={onAddComment} onDeleteComment={onDeleteComment} />
         ))}
         {visibleWins.length === 0 && (
           <div style={{ fontSize: 12, color: D.sub, fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>No wins yet. Be the first — post one above, or go log a session.</div>
