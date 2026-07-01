@@ -229,3 +229,25 @@ export async function myAuthId() {
   const { data: { user } } = await supabase.auth.getUser();
   return user ? user.id : null;
 }
+
+// ---- nutrition lookup ------------------------------------------------------
+// Proxies CalorieNinjas through the `nutrition` Edge Function so the API key
+// stays server-side. Sums macros across returned items (a query can match more
+// than one food). Returns {ok:false, reason} on any miss/error so the custom-
+// food form can fall back to manual entry instead of failing.
+export async function lookupNutrition(query) {
+  try {
+    const { data, error } = await supabase.functions.invoke("nutrition", { body: { query } });
+    if (error) return { ok: false, reason: "error" };
+    if (!data || data.error || !Array.isArray(data.items) || data.items.length === 0) return { ok: false, reason: "nomatch" };
+    const s = data.items.reduce((a, it) => ({
+      cal: a.cal + (Number(it.calories) || 0),
+      p:   a.p   + (Number(it.protein_g) || 0),
+      c:   a.c   + (Number(it.carbohydrates_total_g) || 0),
+      f:   a.f   + (Number(it.fat_total_g) || 0),
+    }), { cal: 0, p: 0, c: 0, f: 0 });
+    return { ok: true, cal: Math.round(s.cal), p: +s.p.toFixed(1), c: +s.c.toFixed(1), f: +s.f.toFixed(1) };
+  } catch (e) {
+    return { ok: false, reason: "error" };
+  }
+}
