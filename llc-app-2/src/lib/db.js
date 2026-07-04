@@ -4,7 +4,7 @@
 import { supabase } from "./supabase";
 
 const STATE_COLS = ["program","logs","notes","meals","goals","checkins","bodylog",
-  "photos","misses","readiness","pillaracts","attendance","formvids","xp","freezes","ckday","seencoach","seenreview"];
+  "photos","misses","readiness","pillaracts","attendance","formvids","xp","freezes","ckday","seencoach","seenreview","customfoods"];
 
 // ---- row <-> app-object mappers -------------------------------------------
 const coachFromRow  = (r) => ({ ...(r.data||{}), id: r.id });
