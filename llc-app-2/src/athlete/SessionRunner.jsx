@@ -11,7 +11,7 @@ export default function SessionRunner({day,week,total,clogs,onDone,onCancel,onRe
   const [phase,setPhase]=useState(onReady?"ready":"log");
   const [rd,setRd]=useState({sleep:7,energy:7,soreness:5});
   const dl=isDeload(week,total);
-  const [data,setData]=useState(()=>day.ex.map(x=>{const cur=clogs[`w${week}|${day.id}|${x.exId}`];const cs=cur&&cur.sets&&cur.sets.length?cur.sets:null;const last=clogs[`w${week-1}|${day.id}|${x.exId}`];const ls=last?last.sets:null;return{exId:x.exId,name:EXBYID[x.exId]?EXBYID[x.exId].n:"?",mod:x.mod,tempo:x.tempo,grp:x.grp,rpe:cs&&cs[0]&&cs[0].rpe!=null?cs[0].rpe:null,sets:Array.from({length:x.sets},(_,i)=>cs&&cs[i]?{w:cs[i].w,r:cs[i].r,done:!!cs[i].done}:{w:dl?targetW(x,week,total):(ls&&ls[i]?ls[i].w:targetW(x,week,total)),r:dReps(x,week,total),done:false})};}));
+  const [data,setData]=useState(()=>day.ex.map(x=>{const cur=clogs[`w${week}|${day.id}|${x.exId}`];const cs=cur&&cur.sets&&cur.sets.length?cur.sets:null;const last=clogs[`w${week-1}|${day.id}|${x.exId}`];const ls=last?last.sets:null;return{exId:x.exId,name:EXBYID[x.exId]?EXBYID[x.exId].n:"?",mod:x.mod,tempo:x.tempo,grp:x.grp,rpe:cs&&cs[0]&&cs[0].rpe!=null?cs[0].rpe:null,sets:Array.from({length:x.sets},(_,i)=>cs&&cs[i]?{w:cs[i].w,r:cs[i].r,done:!!cs[i].done}:{w:dl?x.load:(ls&&ls[i]?ls[i].w:x.load),r:x.reps,done:false})};}));
   const upd=(ei,si,patch)=>setData(p=>p.map((e,i)=>i!==ei?e:{...e,sets:e.sets.map((s,j)=>j!==si?s:{...s,...patch})}));
   const setRpe=(ei,v)=>setData(p=>p.map((e,i)=>i!==ei?e:{...e,rpe:v}));
   const [swapEi,setSwapEi]=useState(null);
