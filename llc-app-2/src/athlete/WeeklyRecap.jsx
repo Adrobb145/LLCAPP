@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { D } from "../theme/tokens";
 import { askClaude } from "../lib/ai";
+import { daysForWeek } from "../lib/program";
 
 export default function WeeklyRecap({client,program,clogs,bodylog,misses,stats,cw,onSend,onClose}){
   const [ai,setAi]=useState("");const [busy,setBusy]=useState(false);
-  const sched=program?program.days.length:0;
+  const sched=program?daysForWeek(program,cw,client).length:0;
   let loggedN=0,setsDone=0,rpeSum=0,rpeN=0,vol=0;
-  if(program)program.days.forEach(d=>{const done=d.ex.every(x=>{const e=clogs[`w${cw}|${d.id}|${x.exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);});if(done)loggedN++;d.ex.forEach(x=>{const e=clogs[`w${cw}|${d.id}|${x.exId}`];if(e)e.sets.forEach(s=>{if(s.done){setsDone++;vol+=(Number(s.w)||0)*(Number(s.r)||0);if(s.rpe){rpeSum+=s.rpe;rpeN++;}}});});});
+  if(program)daysForWeek(program,cw,client).forEach(d=>{const done=d.ex.every(x=>{const e=clogs[`w${cw}|${d.id}|${x.exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);});if(done)loggedN++;d.ex.forEach(x=>{const e=clogs[`w${cw}|${d.id}|${x.exId}`];if(e)e.sets.forEach(s=>{if(s.done){setsDone++;vol+=(Number(s.w)||0)*(Number(s.r)||0);if(s.rpe){rpeSum+=s.rpe;rpeN++;}}});});});
   const avgRpe=rpeN?(rpeSum/rpeN).toFixed(1):null;
   const bwDelta=bodylog.length>1?Math.round((bodylog[bodylog.length-1].w-bodylog[bodylog.length-2].w)*10)/10:0;
   const missW=misses.filter(m=>m.week===cw);
