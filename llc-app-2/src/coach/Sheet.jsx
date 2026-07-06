@@ -16,6 +16,7 @@
 // ──────────────────────────────────────────────────────────────────
 import { useState } from "react";
 import { targetW, dReps, e1rm, round5, isDeload } from "../lib/training";
+import { daysForWeek } from "../lib/program";
 import { EXBYID, ID, PATL } from "../constants/exercises";
 import { DELOAD } from "../constants/progression";
 import { modOf } from "../constants/modalities";
@@ -39,14 +40,14 @@ export default function Sheet({client,program,week,setWeek,logs,onLog,onAddEx,on
   const [dayIdx,setDayIdx]=useState(0);
   const [picker,setPicker]=useState(false);
   const [noteText,setNoteText]=useState("");
-  const day=program.days[dayIdx]||program.days[0];
+  const wdays=daysForWeek(program,week,client);const day=wdays[dayIdx]||wdays[0];
   const maxSets=Math.max(4,...day.ex.map(x=>x.sets));
   const tw=client.totalWeeks;
   const dl=isDeload(week,tw);
   const dayStatus=d=>{const allDone=d.ex.every(x=>{const e=logs[`w${week}|${d.id}|${x.exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);});if(allDone)return"logged";const some=d.ex.some(x=>{const e=logs[`w${week}|${d.id}|${x.exId}`];return e&&e.sets.some(s=>s.done);});return some?"in":"";};
-  const getEntry=(x)=>{const k=`w${week}|${day.id}|${x.exId}`;const e=logs[k];if(e)return e;return{note:"",sets:Array.from({length:x.sets},()=>({w:targetW(x,week,tw),r:dReps(x,week,tw),rpe:null,done:false}))};};
+  const getEntry=(x)=>{const k=`w${week}|${day.id}|${x.exId}`;const e=logs[k];if(e)return e;return{note:"",sets:Array.from({length:x.sets},()=>({w:x.load,r:x.reps,rpe:null,done:false}))};};
   const writeSet=(x,i,patch)=>{const k=`w${week}|${day.id}|${x.exId}`;const cur=getEntry(x);const sets=cur.sets.map((s,j)=>j===i?{...s,...patch}:s);onLog(k,{...cur,sets});};
-  const lastTop=(x)=>{if(week<2)return null;const e=logs[`w${week-1}|${day.id}|${x.exId}`];if(!e)return{w:targetW(x,week-1,tw),r:dReps(x,week-1,tw)};const top=e.sets.reduce((m,s)=>(Number(s.w)||0)>(Number(m?.w)||0)?s:m,null);return top;};
+  const lastTop=(x)=>{if(week<2)return null;const e=logs[`w${week-1}|${day.id}|${x.exId}`];if(!e)return{w:x.load,r:x.reps};const top=e.sets.reduce((m,s)=>(Number(s.w)||0)>(Number(m?.w)||0)?s:m,null);return top;};
   let doneSets=0,totSets=0,vol=0;
   day.ex.forEach(x=>{const e=getEntry(x);totSets+=e.sets.length;e.sets.forEach(s=>{if(s.done){doneSets++;vol+=(Number(s.w)||0)*(Number(s.r)||0);}});});
   const weekVol=[];for(let w=1;w<=client.currentWeek;w++){let v=0;program.days.forEach(d=>d.ex.forEach(x=>{const e=logs[`w${w}|${d.id}|${x.exId}`];if(e)e.sets.forEach(s=>{if(s.done)v+=(Number(s.w)||0)*(Number(s.r)||0);});}));weekVol.push(Math.round(v/1000*10)/10);}
@@ -73,10 +74,10 @@ export default function Sheet({client,program,week,setWeek,logs,onLog,onAddEx,on
       <div className="dtabs">{program.days.map((d,i)=>(<button key={d.id} className="dtab" data-on={i===dayIdx} onClick={()=>setDayIdx(i)}><div className="dtab-d">{d.dow}</div><div>{d.name}<span className="dstat" data-s={dayStatus(d)}/></div></button>))}<div style={{marginLeft:"auto",display:"flex",alignItems:"center",padding:"0 12px"}}><span style={{fontSize:10,color:"#807E76",letterSpacing:".06em",textTransform:"uppercase",fontWeight:600}}>W{week}{dl?" · DL":""} · {doneSets}/{totSets} sets · {(vol/1000).toFixed(1)}k lb</span></div></div>
       <div className="sheet" style={{"--sc":maxSets}}>
         <div className="shrow"><div>Exercise</div><div className="ctr">Target</div><div>Last</div><div className="ctr">Auto</div>{Array.from({length:maxSets}).map((_,i)=><div key={i} className="ctr">Set {i+1}</div>)}<div className="ctr">·</div></div>
-        {day.ex.map((x,xi)=>{const m=EXBYID[x.exId];if(!m)return null;const entry=getEntry(x);const pad=Array.from({length:Math.max(0,maxSets-entry.sets.length)});const last=lastTop(x);const sug=round5(targetW(x,week,tw)*(dl?1:1.025));return(<div key={x.exId+xi}>
+        {day.ex.map((x,xi)=>{const m=EXBYID[x.exId];if(!m)return null;const entry=getEntry(x);const pad=Array.from({length:Math.max(0,maxSets-entry.sets.length)});const last=lastTop(x);const sug=round5((x.load||0)*(dl?1:1.025));return(<div key={x.exId+xi}>
           <div className="exrow">
             <div><div className="ex-name">{m.n}</div><div className="ex-pat">{PATL[m.p]} · {m.e}</div>{(modOf(x).id!=="straight"||x.tempo||x.grp)?<div style={{marginTop:4}}><ModTag x={x}/></div>:null}</div>
-            <div className="tcell"><div className="t-reps">{x.sets}×{dReps(x,week,tw)}</div><div className="t-lbl" style={dl?{color:"#FF6B2C"}:{}}>{dl?"deload":"target"}</div></div>
+            <div className="tcell"><div className="t-reps">{x.sets}×{x.reps}</div><div className="t-lbl" style={dl?{color:"#FF6B2C"}:{}}>{dl?"deload":"target"}</div></div>
             <div className="lcell"><div className="l-w">{last?`${last.w}×${last.r}`:"—"}</div><div className="l-m">last wk</div></div>
             <div className="scell sgst"><div className="s-w">{sug}</div><div className="s-l">auto</div></div>
             {entry.sets.map((s,i)=><SetCell key={i} set={s} onChange={patch=>writeSet(x,i,patch)} onToggle={()=>writeSet(x,i,{done:!s.done})}/>)}
