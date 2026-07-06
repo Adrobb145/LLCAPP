@@ -52,8 +52,8 @@ export default function ProgramBuilder({client,program,onEditEx,onAddEx,onRemove
           <button className="actb" title="Remove" onClick={()=>onRemoveEx(day.id,x.exId)} style={{fontSize:14}}>✕</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-          {[["Sets","sets",x.sets,1],["Reps","reps",x.reps,1],["Load (lb)","base",x.base,5]].map(([l,k,v,st])=>(<div key={k}><div style={{fontSize:8.5,color:"#807E76",letterSpacing:".06em",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>{l}</div><input type="number" step={st} value={v} onChange={e=>onEditEx(day.id,x.exId,{[k]:Number(e.target.value)})} onFocus={e=>e.target.select()} style={numIn}/></div>))}
-          <div><div style={{fontSize:8.5,color:"#807E76",letterSpacing:".06em",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>Load +%/wk</div><input type="number" step={.5} value={Math.round(x.step*1000)/10} onChange={e=>onEditEx(day.id,x.exId,{step:(Number(e.target.value)||0)/100})} onFocus={e=>e.target.select()} style={numIn}/></div>
+          {[["Sets","sets",x.sets,1],["Reps","reps",x.reps,1],["Load (lb)","load",x.load,5]].map(([l,k,v,st])=>(<div key={k}><div style={{fontSize:8.5,color:"#807E76",letterSpacing:".06em",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>{l}</div><input type="number" step={st} value={v} onChange={e=>onEditEx(day.id,x.exId,{[k]:Number(e.target.value)})} onFocus={e=>e.target.select()} style={numIn}/></div>))}
+          
         </div>
         <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap",alignItems:"flex-end"}}>
           <div style={{flex:"1 1 160px",minWidth:150}}><div style={{fontSize:8.5,color:"#807E76",letterSpacing:".06em",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>Modality / Method</div><select className="sel" style={{width:"100%"}} value={x.mod||"straight"} onChange={e=>onEditEx(day.id,x.exId,{mod:e.target.value})}>{MODALITIES.map(mo=><option key={mo.id} value={mo.id}>{mo.label}</option>)}</select></div>
