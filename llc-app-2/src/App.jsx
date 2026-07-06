@@ -6,7 +6,7 @@ import { hasBackend } from "./lib/supabase";
 import * as db from "./lib/db";
 import AuthGate from "./auth/AuthGate";
 import { COACHES0, CLIENTS0, makeProgram, seedLogs, seedPillarActs } from "./constants/seed";
-import { migrateProgram, editWeekEx as pEditWeekEx, editAllWeeks, cloneWeek as pCloneWeek, addWeek as pAddWeek, removeWeek as pRemoveWeek } from "./lib/program";
+import { migrateProgram, editWeekEx as pEditWeekEx, editAllWeeks, cloneWeek as pCloneWeek, addWeek as pAddWeek, removeWeek as pRemoveWeek, addExWeek as pAddExWeek, removeExWeek as pRemoveExWeek } from "./lib/program";
 import { setCustomExercises } from "./constants/exercises";
 import { PILLAR_ACTS } from "./constants/pillars";
 import { analyze } from "./lib/analytics";
@@ -230,6 +230,8 @@ export default function App(){
   const onAddNote=(cid,text,from)=>setNotes(p=>({...p,[cid]:[{date:new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),author:from==="client"?(clients.find(c=>c.id===cid)?.name.split(" ")[0]||"Athlete"):(from==="ai"?"Coach Adam":(authCoach?.name.split(" ")[0]||"Coach")),text,from:from||"coach"},...(p[cid]||[])]}));
   const editEx=(dayId,exId,patch)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.map(d=>d.id!==dayId?d:{...d,ex:d.ex.map(x=>x.exId===exId?{...x,...patch}:x)}))}));
   const editWeekEx=(w,dayId,exId,patch)=>setPrograms(p=>({...p,[client.id]:pEditWeekEx(p[client.id],w,dayId,exId,patch)}));
+  const addExW=(w,dayId,exId)=>setPrograms(p=>({...p,[client.id]:pAddExWeek(p[client.id],w,dayId,exId)}));
+  const removeExW=(w,dayId,exId)=>setPrograms(p=>({...p,[client.id]:pRemoveExWeek(p[client.id],w,dayId,exId)}));
   const cloneToNext=(w)=>setPrograms(p=>({...p,[client.id]:pCloneWeek(p[client.id],w,w+1)}));
   const addWeek=()=>{setPrograms(p=>({...p,[client.id]:pAddWeek(p[client.id])}));setClients(cs=>cs.map(c=>c.id!==client.id?c:{...c,totalWeeks:(c.totalWeeks||1)+1}));};
   const removeWeek=(w)=>{setPrograms(p=>({...p,[client.id]:pRemoveWeek(p[client.id],w)}));setClients(cs=>cs.map(c=>c.id!==client.id?c:{...c,totalWeeks:Math.max(1,(c.totalWeeks||1)-1),currentWeek:Math.min(c.currentWeek,Math.max(1,(c.totalWeeks||1)-1))}));};
@@ -292,8 +294,8 @@ export default function App(){
         {view==="sessions"&&<SessionsTracker clients={clients} coaches={coaches} attendance={attendance} authCoach={authCoach} onAddSession={addSession} onToggleAttended={toggleAttended} onRemoveSession={removeSession}/>}
         {view==="community"&&<CommunityCoach data={community} clients={clients} onCreate={createChallengeFor} onEnd={endChallengeFor} myUid={myUid} onComment={(winId,body)=>addCommentFor(winId,body,"coach",(authCoach?.name||"Coach").split(" ")[0])} onDeleteComment={deleteCommentFor} accents={accentOf}/>}
         {view==="builder"&&(client?<ProgramBuilder client={client} program={program} onEditEx={editEx} onAddEx={addEx} onRemoveEx={removeEx} onReorderEx={reorderEx} onRenameDay={renameDay} onSetDow={setDow} onAddDay={addDay} onRemoveDay={removeDay} onSetPillarTarget={setPillarTarget} onSetNutrition={setNutrition}/>:emptyClient)}
-        {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} week={week} setWeek={setWeek} onEditWeekEx={editWeekEx} onCloneNext={cloneToNext} onAddWeek={addWeek} onRemoveWeek={removeWeek} onAdvanceWeek={advanceWeek}/>:emptyClient)}
-        {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={addEx} onRemoveEx={removeEx} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)} photos={photos[client.id]||[]}/>:emptyClient)}
+        {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} week={week} setWeek={setWeek} onEditWeekEx={editWeekEx} onAddExW={addExW} onRemoveExW={removeExW} onCloneNext={cloneToNext} onAddWeek={addWeek} onRemoveWeek={removeWeek} onAdvanceWeek={advanceWeek}/>:emptyClient)}
+        {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={(dayId,exId)=>addExW(week,dayId,exId)} onRemoveEx={(dayId,exId)=>removeExW(week,dayId,exId)} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)} photos={photos[client.id]||[]}/>:emptyClient)}
         {view==="team"&&<Team coaches={coaches} clients={clients} onMoveClient={moveClient} onRemoveCoach={removeCoach} onAddCoach={addCoach} isOwner={isOwner} onInviteCoach={hasBackend&&isOwner?()=>setInviteCoachOpen(true):null}/>}
       </div>
     </div>
