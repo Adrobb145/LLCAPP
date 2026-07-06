@@ -17,6 +17,7 @@ import Bar from "../shared/Bar";
 import SessionRunner from "./SessionRunner";
 import Community from "./Community";
 import FoodPicker from "./FoodPicker";
+import { daysForWeek } from "../lib/program";
 import FormReviewClient from "./FormReviewClient";
 import AthCheckin from "./AthCheckin";
 import WeeklyRecap from "./WeeklyRecap";
@@ -62,7 +63,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
   const last7=(()=>{const out=[];const t=new Date();t.setHours(0,0,0,0);for(let i=0;i<7;i++){const d=new Date(t);d.setDate(t.getDate()-i);out.push(d.toISOString().split("T")[0]);}return out;})();
   const radar=PILLARS.map(p=>{const total=p.actions.length||1;let sum=0;last7.forEach(dt=>{const a=(pillaracts[dt]||{})[p.id]||{};let frac=Object.keys(a).length/total;if(dt===today&&client.hab&&client.hab[p.id])frac=Math.max(frac,1);sum+=Math.min(1,frac);});return{label:p.icon,color:p.color,val:sum/7};});
 
-  if(run){const day=program&&program.days.find(d=>d.id===run);if(!day)return null;
+  if(run){const day=program&&daysForWeek(program,cw,client).find(d=>d.id===run);if(!day)return null;
     return(<div style={{minHeight:"100vh",background:D.bg,color:D.ink,fontFamily:"'Inter Tight',system-ui,sans-serif",maxWidth:480,margin:"0 auto"}}><style>{FONTS}</style>
       <SessionRunner day={day} week={cw} total={client.totalWeeks} clogs={clogs} onSwapNote={msg=>onSendChat(msg)} onReady={r=>{onLogReadiness({date:today,...r});if(r.sleep<=4||r.soreness>=8||r.energy<=3)onSendChat("⚠️ Readiness flag before "+day.name+" — sleep "+r.sleep+", energy "+r.energy+", soreness "+r.soreness+"/10");}} onCancel={()=>setRun(null)} onDone={entries=>{
         const before=stats.prs;let pr=false;
