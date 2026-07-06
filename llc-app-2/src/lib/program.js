@@ -95,3 +95,23 @@ export function removeWeek(program, week) {
   const wi = clampWeek(program, week) - 1;
   return relabel(mirror({ ...program, weeks: program.weeks.filter((_, i) => i !== wi) }));
 }
+
+// Add an exercise to ONE week's day (per-week movements). Copies fields from an
+// existing instance in another week if present, else sensible defaults.
+export function addExWeek(program, week, dayId, exId) {
+  if (!isMigrated(program)) return program;
+  let tmpl = null;
+  program.weeks.forEach(wk => { const d = wk.days.find(d => d.id === dayId); if (d) { const x = d.ex.find(e => e.exId === exId); if (x && !tmpl) tmpl = x; } });
+  const nx = tmpl ? { ...tmpl } : { exId, role: "accessory", sets: 3, reps: 10, load: 100, loadMode: "fixed", mod: "straight", tempo: "", grp: "", note: "" };
+  const wi = clampWeek(program, week) - 1;
+  const weeks = program.weeks.map((wk, i) => i !== wi ? wk : ({ ...wk, days: wk.days.map(d => d.id !== dayId ? d : (d.ex.some(e => e.exId === exId) ? d : { ...d, ex: [...d.ex, nx] })) }));
+  return mirror({ ...program, weeks });
+}
+
+// Remove an exercise from ONE week's day (per-week movements).
+export function removeExWeek(program, week, dayId, exId) {
+  if (!isMigrated(program)) return program;
+  const wi = clampWeek(program, week) - 1;
+  const weeks = program.weeks.map((wk, i) => i !== wi ? wk : ({ ...wk, days: wk.days.map(d => d.id !== dayId ? d : { ...d, ex: d.ex.filter(e => e.exId !== exId) }) }));
+  return mirror({ ...program, weeks });
+}
