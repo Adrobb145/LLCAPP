@@ -6,6 +6,7 @@ import { hasBackend } from "./lib/supabase";
 import * as db from "./lib/db";
 import AuthGate from "./auth/AuthGate";
 import { COACHES0, CLIENTS0, makeProgram, seedLogs, seedPillarActs } from "./constants/seed";
+import { migrateProgram, editWeekEx as pEditWeekEx, editAllWeeks, cloneWeek as pCloneWeek, addWeek as pAddWeek, removeWeek as pRemoveWeek } from "./lib/program";
 import { setCustomExercises } from "./constants/exercises";
 import { PILLAR_ACTS } from "./constants/pillars";
 import { analyze } from "./lib/analytics";
@@ -30,7 +31,7 @@ import Team from "./coach/Team";
 export default function App(){
   const [coaches,setCoaches]=useState(hasBackend?[]:COACHES0);
   const [clients,setClients]=useState(hasBackend?[]:CLIENTS0);
-  const [programs,setPrograms]=useState(()=>hasBackend?{}:Object.fromEntries(CLIENTS0.map(c=>[c.id,makeProgram(c)])));
+  const [programs,setPrograms]=useState(()=>hasBackend?{}:Object.fromEntries(CLIENTS0.map(c=>[c.id,migrateProgram(makeProgram(c),c.totalWeeks)])));
   const [logs,setLogs]=useState(()=>hasBackend?{}:Object.fromEntries(CLIENTS0.map(c=>[c.id,seedLogs(c,makeProgram(c))])));
   const [notes,setNotes]=useState(hasBackend?{}:{mar:[{date:"Apr 30",author:"Adam",from:"coach",text:"Bar speed on 355 squat looked strong — bumping base next week. Proud of you, Marcus."}]});
   const [meals,setMeals]=useState({});
@@ -80,6 +81,7 @@ export default function App(){
       const m={programs:{},logs:{},notes:{},meals:{},customfoods:{},xp:{},goals:{},checkins:{},bodylog:{},photos:{},freezes:{},ckday:{},attendance:{},misses:{},readiness:{},pillaracts:{},formvids:{},tracked:{},seencoach:{},seenreview:{}};
       Object.entries(stateById).forEach(([cid,s])=>{if(s.program)m.programs[cid]=s.program;m.logs[cid]=s.logs||{};m.notes[cid]=s.notes||[];m.meals[cid]=s.meals||[];m.customfoods[cid]=s.customfoods||[];m.xp[cid]=s.xp||0;m.goals[cid]=s.goals||[];m.checkins[cid]=s.checkins||[];m.bodylog[cid]=s.bodylog||[];m.photos[cid]=s.photos||[];m.freezes[cid]=s.freezes||0;if(s.ckday)m.ckday[cid]=s.ckday;m.attendance[cid]=s.attendance||[];m.misses[cid]=s.misses||[];m.readiness[cid]=s.readiness||[];m.pillaracts[cid]=s.pillaracts||{};m.formvids[cid]=s.formvids||[];m.tracked[cid]=s.tracked||[];m.seencoach[cid]=s.seencoach||0;m.seenreview[cid]=s.seenreview||0;});
       cl.forEach(c=>{if(!m.programs[c.id]){const prog=makeProgram(c);m.programs[c.id]=prog;if(!stateById[c.id])m.logs[c.id]=seedLogs(c,prog);}});
+      cl.forEach(c=>{if(m.programs[c.id])m.programs[c.id]=migrateProgram(m.programs[c.id],c.totalWeeks);});
       db.primeCache({coaches:co,clients:cl,state:stateById});
       setPrograms(m.programs);setLogs(m.logs);setNotes(m.notes);setMeals(m.meals);setCustomfoods(m.customfoods);setXp(m.xp);setGoals(m.goals);setCheckins(m.checkins);setBodylog(m.bodylog);setPhotos(m.photos);setFreezes(m.freezes);setCkday(m.ckday);setAttendance(m.attendance);setMisses(m.misses);setReadiness(m.readiness);if(Object.keys(m.pillaracts).length)setPillaracts(m.pillaracts);setFormvids(m.formvids);setTracked(m.tracked);setSeencoach(m.seencoach);setSeenreview(m.seenreview);
       try{const cx=await db.loadCustomExercises();setCustomExercises(cx);setCustTick(t=>t+1);}catch(e){console.error("LLC custom-ex load",e);}
@@ -90,7 +92,7 @@ export default function App(){
   };
   const doLogout=async()=>{if(hasBackend){try{await db.signOut();}catch(e){}setSession(null);setProfile(null);}setAuthClient(null);setAuthCoach(null);setRole(null);};
 
-  useEffect(()=>{if(hasBackend){if(profile)loadBackend();return;}(async()=>{try{const r=await window.storage.get("llc_store",false);if(r&&r.value){const d=JSON.parse(r.value);if(d.coaches)setCoaches(d.coaches.map(c=>{const df=COACHES0.find(x=>x.id===c.id);return df?{...df,...c}:c;}));if(d.clients)setClients(d.clients.map(c=>{const df=CLIENTS0.find(x=>x.id===c.id);return df?{...df,...c}:c;}));if(d.programs)setPrograms(d.programs);if(d.logs)setLogs(d.logs);if(d.notes)setNotes(d.notes);if(d.meals)setMeals(d.meals);if(d.customfoods)setCustomfoods(d.customfoods);if(d.xp)setXp(d.xp);if(d.goals)setGoals(d.goals);if(d.checkins)setCheckins(d.checkins);if(d.bodylog)setBodylog(d.bodylog);if(d.photos)setPhotos(d.photos);if(d.freezes)setFreezes(d.freezes);if(d.ckday)setCkday(d.ckday);if(d.attendance)setAttendance(d.attendance);if(d.misses)setMisses(d.misses);if(d.readiness)setReadiness(d.readiness);if(d.pillaracts)setPillaracts(d.pillaracts);if(d.formvids)setFormvids(d.formvids);if(d.tracked)setTracked(d.tracked);if(d.seencoach)setSeencoach(d.seencoach);if(d.seenreview)setSeenreview(d.seenreview);}}catch(e){}try{const rp=await window.storage.get("llc_photos",false);if(rp&&rp.value)setPhotos(JSON.parse(rp.value));}catch(e){}setHydrated(true);})();},[profile]);
+  useEffect(()=>{if(hasBackend){if(profile)loadBackend();return;}(async()=>{try{const r=await window.storage.get("llc_store",false);if(r&&r.value){const d=JSON.parse(r.value);if(d.coaches)setCoaches(d.coaches.map(c=>{const df=COACHES0.find(x=>x.id===c.id);return df?{...df,...c}:c;}));if(d.clients)setClients(d.clients.map(c=>{const df=CLIENTS0.find(x=>x.id===c.id);return df?{...df,...c}:c;}));if(d.programs)setPrograms(Object.fromEntries(Object.entries(d.programs).map(([pid,pr])=>{const cc=(d.clients||CLIENTS0).find(x=>x.id===pid);return [pid,migrateProgram(pr,cc?cc.totalWeeks:1)];})));if(d.logs)setLogs(d.logs);if(d.notes)setNotes(d.notes);if(d.meals)setMeals(d.meals);if(d.customfoods)setCustomfoods(d.customfoods);if(d.xp)setXp(d.xp);if(d.goals)setGoals(d.goals);if(d.checkins)setCheckins(d.checkins);if(d.bodylog)setBodylog(d.bodylog);if(d.photos)setPhotos(d.photos);if(d.freezes)setFreezes(d.freezes);if(d.ckday)setCkday(d.ckday);if(d.attendance)setAttendance(d.attendance);if(d.misses)setMisses(d.misses);if(d.readiness)setReadiness(d.readiness);if(d.pillaracts)setPillaracts(d.pillaracts);if(d.formvids)setFormvids(d.formvids);if(d.tracked)setTracked(d.tracked);if(d.seencoach)setSeencoach(d.seencoach);if(d.seenreview)setSeenreview(d.seenreview);}}catch(e){}try{const rp=await window.storage.get("llc_photos",false);if(rp&&rp.value)setPhotos(JSON.parse(rp.value));}catch(e){}setHydrated(true);})();},[profile]);
   const [saveErr,setSaveErr]=useState(false);
   const retrySave=()=>{if(hasBackend)db.persist(buildSnapshot()).then(()=>setSaveErr(false)).catch(e=>{console.error("LLC save retry",e);setSaveErr(true);});};
   useEffect(()=>{if(!hydrated)return;if(hasBackend){const t=setTimeout(()=>{db.persist(buildSnapshot()).then(()=>setSaveErr(false)).catch(e=>{console.error("LLC save error",e);setSaveErr(true);});},700);return()=>clearTimeout(t);}const t=setTimeout(()=>{try{window.storage.set("llc_store",JSON.stringify({coaches,clients,programs,logs,notes,meals,customfoods,xp,goals,checkins,bodylog,freezes,ckday,attendance,misses,readiness,pillaracts,formvids,tracked,seencoach,seenreview}),false);}catch(e){}try{window.storage.set("llc_photos",JSON.stringify(photos),false);}catch(e){}},600);return()=>clearTimeout(t);},[coaches,clients,programs,logs,notes,meals,customfoods,xp,goals,checkins,bodylog,photos,freezes,ckday,attendance,misses,readiness,pillaracts,formvids,tracked,seencoach,seenreview,hydrated]);
@@ -203,7 +205,7 @@ export default function App(){
     const c={id,coachId,name:f.name,initials,goal:f.goal,accent,bw:f.bw,block:f.block,totalWeeks:f.totalWeeks,currentWeek:1,adherence:1,lifts:{sq:f.sq,bn:f.bn,dl:f.dl},pin:f.pin||"",nt:{p:0,c:0,f:0,kcal:0},hab:{},streak:{},pillarTargets:{},email:f.email||""};
     const prog=makeProgram(c);
     setClients(p=>[...p,c]);
-    setPrograms(p=>({...p,[id]:prog}));
+    setPrograms(p=>({...p,[id]:migrateProgram(prog,c.totalWeeks)}));
     setLogs(p=>({...p,[id]:{}}));
     setPillaracts(p=>({...p,[id]:{}}));
     setAddOpen(false);setClientId(id);setWeek(1);setView("builder");
@@ -226,19 +228,23 @@ export default function App(){
   const openClient=id=>{const c=clients.find(x=>x.id===id);setClientId(id);setWeek(c?.currentWeek||1);setView("sheet");};
   const onLog=(key,data)=>setLogs(p=>({...p,[client.id]:{...(p[client.id]||{}),[key]:data}}));
   const onAddNote=(cid,text,from)=>setNotes(p=>({...p,[cid]:[{date:new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),author:from==="client"?(clients.find(c=>c.id===cid)?.name.split(" ")[0]||"Athlete"):(from==="ai"?"Coach Adam":(authCoach?.name.split(" ")[0]||"Coach")),text,from:from||"coach"},...(p[cid]||[])]}));
-  const editEx=(dayId,exId,patch)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.map(d=>d.id!==dayId?d:{...d,ex:d.ex.map(x=>x.exId===exId?{...x,...patch}:x)})}}));
-  const addEx=(dayId,exId)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.map(d=>d.id!==dayId?d:{...d,ex:[...d.ex,{exId,sets:3,reps:10,base:100,step:.02,mod:"straight",tempo:"",grp:""}]})}}));
-  const removeEx=(dayId,exId)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.map(d=>d.id!==dayId?d:{...d,ex:d.ex.filter(x=>x.exId!==exId)})}}));
+  const editEx=(dayId,exId,patch)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.map(d=>d.id!==dayId?d:{...d,ex:d.ex.map(x=>x.exId===exId?{...x,...patch}:x)}))}));
+  const editWeekEx=(w,dayId,exId,patch)=>setPrograms(p=>({...p,[client.id]:pEditWeekEx(p[client.id],w,dayId,exId,patch)}));
+  const cloneToNext=(w)=>setPrograms(p=>({...p,[client.id]:pCloneWeek(p[client.id],w,w+1)}));
+  const addWeek=()=>{setPrograms(p=>({...p,[client.id]:pAddWeek(p[client.id])}));setClients(cs=>cs.map(c=>c.id!==client.id?c:{...c,totalWeeks:(c.totalWeeks||1)+1}));};
+  const removeWeek=(w)=>{setPrograms(p=>({...p,[client.id]:pRemoveWeek(p[client.id],w)}));setClients(cs=>cs.map(c=>c.id!==client.id?c:{...c,totalWeeks:Math.max(1,(c.totalWeeks||1)-1),currentWeek:Math.min(c.currentWeek,Math.max(1,(c.totalWeeks||1)-1))}));};
+  const addEx=(dayId,exId)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.map(d=>d.id!==dayId?d:{...d,ex:[...d.ex,{exId,role:"accessory",sets:3,reps:10,load:100,loadMode:"fixed",mod:"straight",tempo:"",grp:"",note:""}]}))}));
+  const removeEx=(dayId,exId)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.map(d=>d.id!==dayId?d:{...d,ex:d.ex.filter(x=>x.exId!==exId)}))}));
   const setWeeks=patch=>setClients(p=>p.map(c=>c.id!==client.id?c:{...c,...patch,currentWeek:Math.min(c.currentWeek,patch.totalWeeks||c.totalWeeks)}));
   const advanceWeek=delta=>setClients(p=>p.map(c=>c.id!==client.id?c:{...c,currentWeek:Math.max(1,Math.min(c.totalWeeks,c.currentWeek+delta))}));
   const moveClient=(cid,coachId)=>setClients(p=>p.map(c=>c.id===cid?{...c,coachId}:c));
   const removeCoach=(coachId,toId)=>{setClients(p=>p.map(c=>c.coachId===coachId?{...c,coachId:toId}:c));setCoaches(p=>p.filter(c=>c.id!==coachId));};
   const addCoach=name=>{const initials=name.trim().split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase();const accent=["#FF6B2C","#3AE0FF","#FF3A8E","#9EFF3A","#FFB23A"][coaches.length%5];setCoaches(p=>[...p,{id:"co_"+Date.now(),name,initials,role:"Coach",accent}]);};
-  const reorderEx=(dayId,exId,dir)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.map(d=>{if(d.id!==dayId)return d;const i=d.ex.findIndex(x=>x.exId===exId);const j=i+dir;if(i<0||j<0||j>=d.ex.length)return d;const ex=[...d.ex];const t=ex[i];ex[i]=ex[j];ex[j]=t;return{...d,ex};})}}));
-  const renameDay=(dayId,name)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.map(d=>d.id===dayId?{...d,name}:d)}}));
-  const setDow=(dayId,dow)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.map(d=>d.id===dayId?{...d,dow}:d)}}));
-  const addDay=()=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:[...p[client.id].days,{id:"d"+Date.now(),name:"New Day",dow:"Mon",ex:[]}]}}));
-  const removeDay=(dayId)=>setPrograms(p=>({...p,[client.id]:{...p[client.id],days:p[client.id].days.filter(d=>d.id!==dayId)}}));
+  const reorderEx=(dayId,exId,dir)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.map(d=>{if(d.id!==dayId)return d;const i=d.ex.findIndex(x=>x.exId===exId);const j=i+dir;if(i<0||j<0||j>=d.ex.length)return d;const ex=[...d.ex];const t=ex[i];ex[i]=ex[j];ex[j]=t;return{...d,ex};}))}));
+  const renameDay=(dayId,name)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.map(d=>d.id===dayId?{...d,name}:d))}));
+  const setDow=(dayId,dow)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.map(d=>d.id===dayId?{...d,dow}:d))}));
+  const addDay=()=>{const nid="d"+Date.now();setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>[...days,{id:nid,name:"New Day",dow:"Mon",ex:[]}])}));};
+  const removeDay=(dayId)=>setPrograms(p=>({...p,[client.id]:editAllWeeks(p[client.id],days=>days.filter(d=>d.id!==dayId))}));
   const setPillarTarget=(cid,actId,text)=>setClients(p=>p.map(c=>c.id!==cid?c:{...c,pillarTargets:{...(c.pillarTargets||{}),[actId]:text}}));
 
   useEffect(()=>{if(!hasBackend||!profile)return;if(profile.role==="coach"||profile.role==="owner"){setRole("coach");const c=coaches.find(x=>x.id===profile.coach_id);if(c)setAuthCoach(c);}else if(profile.role==="athlete"){setRole("client");const c=clients.find(x=>x.id===profile.client_id);if(c)setAuthClient(c);}},[profile,coaches,clients]);
@@ -286,7 +292,7 @@ export default function App(){
         {view==="sessions"&&<SessionsTracker clients={clients} coaches={coaches} attendance={attendance} authCoach={authCoach} onAddSession={addSession} onToggleAttended={toggleAttended} onRemoveSession={removeSession}/>}
         {view==="community"&&<CommunityCoach data={community} clients={clients} onCreate={createChallengeFor} onEnd={endChallengeFor} myUid={myUid} onComment={(winId,body)=>addCommentFor(winId,body,"coach",(authCoach?.name||"Coach").split(" ")[0])} onDeleteComment={deleteCommentFor} accents={accentOf}/>}
         {view==="builder"&&(client?<ProgramBuilder client={client} program={program} onEditEx={editEx} onAddEx={addEx} onRemoveEx={removeEx} onReorderEx={reorderEx} onRenameDay={renameDay} onSetDow={setDow} onAddDay={addDay} onRemoveDay={removeDay} onSetPillarTarget={setPillarTarget} onSetNutrition={setNutrition}/>:emptyClient)}
-        {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} onEditEx={editEx} onSetWeeks={setWeeks} onAddEx={addEx} onRemoveEx={removeEx} onAdvanceWeek={advanceWeek}/>:emptyClient)}
+        {view==="planner"&&(client?<Planner client={client} program={program} logs={clientLogs} week={week} setWeek={setWeek} onEditWeekEx={editWeekEx} onCloneNext={cloneToNext} onAddWeek={addWeek} onRemoveWeek={removeWeek} onAdvanceWeek={advanceWeek}/>:emptyClient)}
         {view==="sheet"&&(client?<Sheet client={client} program={program} week={week} setWeek={setWeek} logs={clientLogs} onLog={onLog} onAddEx={addEx} onRemoveEx={removeEx} notes={notes} onAddNote={onAddNote} coaches={coaches} formvids={formvids[client.id]||[]} vidUrls={vidUrls} onReviewVid={(id,fb)=>reviewFormVid(client.id,id,fb)} photos={photos[client.id]||[]}/>:emptyClient)}
         {view==="team"&&<Team coaches={coaches} clients={clients} onMoveClient={moveClient} onRemoveCoach={removeCoach} onAddCoach={addCoach} isOwner={isOwner} onInviteCoach={hasBackend&&isOwner?()=>setInviteCoachOpen(true):null}/>}
       </div>
