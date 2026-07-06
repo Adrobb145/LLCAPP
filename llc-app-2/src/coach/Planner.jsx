@@ -1,71 +1,90 @@
 // coach/Planner.jsx
-// Mesocycle Planner — the month layout. Columns are weeks, rows are exercises
-// grouped by day (the union of movements used across the block). Every week is
-// independent: add a movement to just Week 2, remove it from Week 4, set each
-// week's load — nothing bleeds into the other weeks. Days themselves (which
-// training days exist) are still shared; add/remove DAYS in Build Day.
+// Mesocycle Planner — two modes so a multi-week, multi-day block never becomes
+// a wall of inputs:
+//   WEEK  (default, edit): one week at a time. Days stacked; each movement a
+//         single row (sets/reps/load editable, add/remove per day). A quiet
+//         read-only strip under each lift shows its load across every week.
+//   MONTH (read-only scan): the whole block as static numbers. Click a week to
+//         jump into Week view for it. No inputs — for seeing progression.
+// Engine/handlers unchanged; this file is purely presentational.
 import { useState } from "react";
 import { daysForWeek, weekCount } from "../lib/program";
 import { isDeload } from "../lib/training";
 import { EXBYID } from "../constants/exercises";
 import { modOf } from "../constants/modalities";
 import ExercisePicker from "../shared/ExercisePicker";
+import { D } from "../theme/tokens";
 
 export default function Planner({client,program,logs,week,setWeek,onEditWeekEx,onAddExW,onRemoveExW,onCloneNext,onAddWeek,onRemoveWeek,onAdvanceWeek}){
-  const [picker,setPicker]=useState(null); // {dayId, week}
+  const [mode,setMode]=useState("week");
+  const [picker,setPicker]=useState(null);
   const tw=weekCount(program);
   const weeks=Array.from({length:tw},(_,i)=>i+1);
-  const colTmpl=`240px repeat(${tw},96px)`;
   const wdata=weeks.map(w=>daysForWeek(program,w,client));
-  const struct=wdata[0]||[];
+  const sw=Math.max(1,Math.min(tw,week||client.currentWeek||1));
   const dayAt=(w,dayId)=>(wdata[w-1]||[]).find(d=>d.id===dayId);
   const exAt=(w,dayId,exId)=>{const dd=dayAt(w,dayId);return dd?dd.ex.find(x=>x.exId===exId)||null:null;};
+  const struct=wdata[0]||[];
   const unionEx=(dayId)=>{const seen=[];weeks.forEach(w=>{const dd=dayAt(w,dayId);if(dd)dd.ex.forEach(x=>{if(!seen.includes(x.exId))seen.push(x.exId);});});return seen;};
-  const firstEx=(dayId,exId)=>{for(const w of weeks){const e=exAt(w,dayId,exId);if(e)return e;}return null;};
-  const dayDone=(w,dId)=>{const dd=dayAt(w,dId);return dd&&dd.ex.length&&dd.ex.every(x=>{const e=logs[`w${w}|${dId}|${x.exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);});};
-  const cur=week||client.currentWeek||1;
+  const swDays=wdata[sw-1]||[];
+  const go=w=>{setWeek&&setWeek(Math.max(1,Math.min(tw,w)));};
+
+  const seg=(id,label)=>(<button onClick={()=>setMode(id)} className="mono" style={{padding:"5px 12px",fontSize:11,fontWeight:700,letterSpacing:".04em",border:`1px solid ${mode===id?D.acc:D.line}`,background:mode===id?D.acc:"transparent",color:mode===id?"#111":D.sub,borderRadius:6,cursor:"pointer"}}>{label}</button>);
+
+  const numIn=(val,on)=>({width:on?46:44,textAlign:"center",background:D.lift,border:`1px solid ${D.line}`,color:D.ink,borderRadius:6,padding:"5px 2px",fontSize:12,fontFamily:"'Roboto Mono',monospace"});
 
   return(<div className="pl">
-    <div className="rhead">
-      <div><div className="kick" style={{marginBottom:8}}>Mesocycle Planner</div><div className="rtitle">{client.name.split(" ")[0]}'s Block</div><div className="rsub">{client.block} · {tw} weeks · lay out each week independently — movements and loads per week. Clone a week forward to repeat it.</div></div>
-      <div style={{display:"flex",gap:16,alignItems:"flex-end",flexWrap:"wrap"}}>
-        <div style={{display:"flex",flexDirection:"column",gap:5}}><span className="libfl">Current Week</span><div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <button className="btn sec sm" disabled={cur<=1} style={{opacity:cur<=1?.4:1}} onClick={()=>{onAdvanceWeek(-1);setWeek&&setWeek(Math.max(1,cur-1));}}>◀</button>
-          <span className="mono" style={{minWidth:64,textAlign:"center",fontFamily:"'Archivo Black',sans-serif",fontSize:15,color:isDeload(cur,tw)?"#FF6B2C":"#F5F4F0"}}>W{cur}{isDeload(cur,tw)?" · DL":""}</span>
-          <button className="btn sm" disabled={cur>=tw} style={{opacity:cur>=tw?.4:1}} onClick={()=>{onAdvanceWeek(1);setWeek&&setWeek(Math.min(tw,cur+1));}}>▶</button>
-        </div></div>
-        <div style={{display:"flex",flexDirection:"column",gap:5}}><span className="libfl">Repeat</span><div style={{display:"flex",gap:6}}>
-          <button className="btn sec sm" disabled={cur>=tw} style={{opacity:cur>=tw?.4:1}} onClick={()=>onCloneNext(cur)} title={`Copy Week ${cur} onto Week ${Math.min(tw,cur+1)}`}>Clone → W{Math.min(tw,cur+1)}</button>
-        </div></div>
-        <div style={{display:"flex",flexDirection:"column",gap:5}}><span className="libfl">Block Length</span><div style={{display:"flex",gap:6}}>
-          <button className="btn sec sm" disabled={tw<=1} style={{opacity:tw<=1?.4:1}} onClick={()=>onRemoveWeek(cur)}>− Week</button>
-          <button className="btn sm" onClick={()=>onAddWeek()}>+ Week</button>
-        </div></div>
+    <div className="rhead" style={{alignItems:"flex-start"}}>
+      <div><div className="kick" style={{marginBottom:8}}>Mesocycle Planner</div><div className="rtitle">{client.name.split(" ")[0]}'s Block</div><div className="rsub">{client.block} · {tw} weeks · {mode==="week"?"editing one week at a time — the strip under each lift shows the whole block.":"read-only overview — tap a week to edit it."}</div></div>
+      <div style={{display:"flex",flexDirection:"column",gap:10,alignItems:"flex-end"}}>
+        <div style={{display:"flex",gap:6}}>{seg("week","✎ Week")}{seg("month","▦ Month")}</div>
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+          <span style={{fontSize:10,color:D.sub}}>Athlete on <b style={{color:D.ink}}>W{client.currentWeek}</b></span>
+          <button className="btn sec sm" disabled={client.currentWeek<=1} style={{opacity:client.currentWeek<=1?.4:1}} onClick={()=>onAdvanceWeek(-1)}>◀</button>
+          <button className="btn sec sm" disabled={client.currentWeek>=tw} style={{opacity:client.currentWeek>=tw?.4:1}} onClick={()=>onAdvanceWeek(1)}>▶</button>
+          <span style={{width:1,height:20,background:D.line}}/>
+          <button className="btn sec sm" disabled={sw>=tw} style={{opacity:sw>=tw?.4:1}} onClick={()=>onCloneNext(sw)} title={`Copy Week ${sw} onto Week ${Math.min(tw,sw+1)}`}>Clone → W{Math.min(tw,sw+1)}</button>
+          <button className="btn sec sm" disabled={tw<=1} style={{opacity:tw<=1?.4:1}} onClick={()=>onRemoveWeek(sw)}>− Wk</button>
+          <button className="btn sm" onClick={()=>onAddWeek()}>+ Wk</button>
+        </div>
       </div>
     </div>
 
-    <div className="plgrid">
-      <div className="plr head" style={{gridTemplateColumns:colTmpl}}><div>Day · Exercise</div>{weeks.map(w=><div key={w} className="plcell" data-cur={w===cur} onClick={()=>setWeek&&setWeek(w)} style={{cursor:"pointer"}}>W{w}{isDeload(w,tw)?" · DL":""}</div>)}</div>
-      {struct.map(d=>{const union=unionEx(d.id);return(<div key={d.id}>
-        <div className="plr" style={{gridTemplateColumns:colTmpl,background:"#101012"}}>
-          <div style={{fontWeight:600,fontSize:11,letterSpacing:".06em",textTransform:"uppercase",color:"#FF6B2C"}}>{d.dow} · {d.name}</div>
-          {weeks.map(w=><div key={w} className="plcell" data-done={dayDone(w,d.id)} style={{fontSize:9,display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}>{dayDone(w,d.id)?<span style={{color:"#3AE07A"}}>✓ logged</span>:null}<button className="addexb" style={{padding:"1px 6px",fontSize:9}} title={`Add a movement to Week ${w}`} onClick={()=>setPicker({dayId:d.id,week:w})}>+ ex</button></div>)}
-        </div>
-        {union.map((exId,xi)=>{const m=EXBYID[exId];if(!m)return null;const fe=firstEx(d.id,exId);return(<div key={exId+xi} className="plr" style={{gridTemplateColumns:colTmpl}}>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:11.5,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.n}</div><div style={{fontSize:9,color:"#807E76",display:"flex",alignItems:"center",gap:5}}>{fe?`${fe.sets}×${fe.reps}`:""}{fe&&modOf(fe).id!=="straight"&&<span style={{color:modOf(fe).color}}>· {modOf(fe).short}</span>}</div></div>
-          {weeks.map(w=>{const ex=exAt(w,d.id,exId);const dlw=isDeload(w,tw);const done=(()=>{const e=logs[`w${w}|${d.id}|${exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);})();
-            if(!ex)return(<div key={w} className="plcell" style={{opacity:.55}}><button className="addexb" style={{padding:"2px 7px",fontSize:11}} title={`Add ${m.n} to Week ${w}`} onClick={()=>onAddExW(w,d.id,exId)}>+</button></div>);
-            return(<div key={w} className="plcell" data-cur={w===cur} data-done={done}>
-              <div style={{display:"flex",alignItems:"center",gap:2,justifyContent:"center"}}>
-                <input className="pbase" style={{width:48,textAlign:"center",...(dlw?{color:"#FF6B2C"}:{})}} type="number" value={ex.load} onChange={e=>onEditWeekEx(w,d.id,exId,{load:Number(e.target.value)})} onFocus={e=>e.target.select()} title={`Week ${w} load`}/>
-                <button className="actb" style={{fontSize:9,lineHeight:1,padding:"0 2px"}} title={`Remove from Week ${w}`} onClick={()=>onRemoveExW(w,d.id,exId)}>✕</button>
-              </div>
-              <div className="plsub">{ex.sets}×{ex.reps}{dlw?" DL":""}</div>
-            </div>);})}
+    {mode==="week"?(<>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>{weeks.map(w=>{const on=w===sw,dl=isDeload(w,tw);return(<button key={w} onClick={()=>go(w)} className="mono" style={{padding:"6px 12px",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",border:`1px solid ${on?D.acc:D.line}`,background:on?D.acc:D.card,color:on?"#111":dl?D.acc:D.ink}}>W{w}{dl?" · DL":""}</button>);})}</div>
+
+      {swDays.length===0&&<div style={{color:D.sub,fontSize:13,padding:14}}>No training days yet — add them in Build Day.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        {swDays.map(d=>(<div key={d.id} style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:12,overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:`1px solid ${D.line}`,background:D.lift}}>
+            <div style={{fontSize:12,fontWeight:700,letterSpacing:".05em",textTransform:"uppercase",color:D.acc}}>{d.dow} · {d.name}</div>
+            <button className="addexb" style={{padding:"3px 10px",fontSize:10}} onClick={()=>setPicker({dayId:d.id,week:sw})}>+ Movement</button>
+          </div>
+          {d.ex.length===0&&<div style={{padding:"12px 14px",fontSize:11,color:D.sub}}>No movements this week. Add one, or clone another week onto this one.</div>}
+          {d.ex.map(x=>{const m=EXBYID[x.exId];if(!m)return null;const md=modOf(x);return(<div key={x.exId} style={{padding:"10px 14px",borderBottom:`1px solid ${D.line}22`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <div style={{flex:"1 1 150px",minWidth:120}}><div style={{fontSize:13,fontWeight:600}}>{m.n}</div>{md.id!=="straight"&&<div style={{fontSize:9.5,color:md.color,fontWeight:600,marginTop:1}}>{md.short}</div>}</div>
+              <label style={{fontSize:9,color:D.sub,textTransform:"uppercase",letterSpacing:".06em",fontWeight:700}}>Sets<input type="number" style={{...numIn(x.sets),display:"block",marginTop:3}} value={x.sets} onFocus={e=>e.target.select()} onChange={e=>onEditWeekEx(sw,d.id,x.exId,{sets:Number(e.target.value)})}/></label>
+              <label style={{fontSize:9,color:D.sub,textTransform:"uppercase",letterSpacing:".06em",fontWeight:700}}>Reps<input type="number" style={{...numIn(x.reps),display:"block",marginTop:3}} value={x.reps} onFocus={e=>e.target.select()} onChange={e=>onEditWeekEx(sw,d.id,x.exId,{reps:Number(e.target.value)})}/></label>
+              <label style={{fontSize:9,color:D.sub,textTransform:"uppercase",letterSpacing:".06em",fontWeight:700}}>Load<input type="number" step={5} style={{...numIn(x.load,true),display:"block",marginTop:3,fontWeight:700}} value={x.load} onFocus={e=>e.target.select()} onChange={e=>onEditWeekEx(sw,d.id,x.exId,{load:Number(e.target.value)})}/></label>
+              <button className="actb" style={{fontSize:13}} title="Remove from this week" onClick={()=>onRemoveExW(sw,d.id,x.exId)}>✕</button>
+            </div>
+            <div style={{display:"flex",gap:3,alignItems:"center",marginTop:7,flexWrap:"wrap"}}><span style={{fontSize:8.5,color:D.sub,textTransform:"uppercase",letterSpacing:".06em",marginRight:2}}>block</span>{weeks.map(w=>{const e=exAt(w,d.id,x.exId);const on=w===sw,dl=isDeload(w,tw);return(<span key={w} onClick={()=>go(w)} title={`Week ${w}`} style={{cursor:"pointer",fontSize:9.5,fontFamily:"'Roboto Mono',monospace",padding:"1px 5px",borderRadius:4,border:`1px solid ${on?D.acc:"transparent"}`,background:on?D.acc+"22":"transparent",color:on?D.acc:e?(dl?D.acc:D.sub):"#3A3A3F",fontWeight:on?700:400}}>{e?e.load:"·"}</span>);})}</div>
+          </div>);})}
+        </div>))}
+      </div>
+    </>):(
+      <div className="plgrid" style={{overflowX:"auto"}}>
+        <div className="plr head" style={{gridTemplateColumns:`210px repeat(${tw},58px)`}}><div>Day · Movement</div>{weeks.map(w=><div key={w} className="plcell" data-cur={w===sw} onClick={()=>{go(w);setMode("week");}} style={{cursor:"pointer"}}>W{w}{isDeload(w,tw)?" DL":""}</div>)}</div>
+        {struct.map(d=>{const union=unionEx(d.id);return(<div key={d.id}>
+          <div className="plr" style={{gridTemplateColumns:`210px repeat(${tw},58px)`,background:"#101012"}}><div style={{fontWeight:600,fontSize:10.5,letterSpacing:".05em",textTransform:"uppercase",color:D.acc,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.dow} · {d.name}</div>{weeks.map(w=><div key={w} className="plcell"/>)}</div>
+          {union.map((exId,xi)=>{const m=EXBYID[exId];if(!m)return null;return(<div key={exId+xi} className="plr" style={{gridTemplateColumns:`210px repeat(${tw},58px)`}}>
+            <div style={{fontSize:11.5,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.n}</div>
+            {weeks.map(w=>{const e=exAt(w,d.id,exId);const dl=isDeload(w,tw);return(<div key={w} className="plcell" data-cur={w===sw} onClick={()=>{go(w);setMode("week");}} style={{cursor:"pointer"}}>{e?<><div className="plw" style={dl?{color:D.acc}:{}}>{e.load}</div><div className="plsub">{e.sets}×{e.reps}</div></>:<div style={{color:"#3A3A3F"}}>·</div>}</div>);})}
+          </div>);})}
         </div>);})}
-      </div>);})}
-    </div>
-    <div className="rsub" style={{marginTop:10,fontSize:10.5}}>Each week is independent — <b>+</b> adds a movement to that week only, <b>✕</b> removes it from that week only. To add or remove a whole training DAY, use <b>Build Day</b>.</div>
+      </div>
+    )}
     {picker&&<ExercisePicker allowCustom onPick={e=>{onAddExW(picker.week,picker.dayId,e.id);setPicker(null);}} onClose={()=>setPicker(null)}/>}
   </div>);
 }
