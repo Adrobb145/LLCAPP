@@ -89,7 +89,7 @@ export default function AuthGate({ onReady }) {
   const Brand = () => (
     <div style={{ textAlign: "center", marginBottom: 22 }}>
       <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 34, height: 34, background: D.acc, color: "#0B0B0C", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Archivo Black',sans-serif", fontSize: 14, borderRadius: 6 }} aria-hidden="true">LL</div>
+        <img src="/logo.png" alt="" style={{ width: 40, height: 40, objectFit: "contain" }} aria-hidden="true" />
         <div style={{ fontFamily: "'Archivo Black',sans-serif", fontSize: 22 }}>LIVE LONG</div>
       </div>
       <div style={{ fontSize: 11, color: D.sub, letterSpacing: ".16em", textTransform: "uppercase", marginTop: 8 }}>Collective</div>
