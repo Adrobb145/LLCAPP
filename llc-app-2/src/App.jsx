@@ -270,7 +270,7 @@ export default function App(){
   return(<div className="app">
     <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Archivo+Black&family=JetBrains+Mono:wght@400;500;600;700&display=swap');`}{CSS}</style>
     <div className="sidebar">
-      <div className="brand"><div className="brand-mark">LL</div><div><div className="brand-name">LIVE LONG</div><div className="brand-sub">Collective · Coach OS</div></div></div>
+      <div className="brand"><img src="/logo.png" alt="" style={{width:28,height:28,objectFit:"contain"}} /><div><div className="brand-name">LIVE LONG</div><div className="brand-sub">Collective · Coach OS</div></div></div>
       <div><div className="sb-lbl">Workspace</div><div className="sb-nav">
         <button className="sb-item" data-on={view==="roster"} onClick={()=>setView("roster")}>📋 Roster<span className="sb-item-ct">{clients.length}</span></button>
         <button className="sb-item" data-on={view==="insights"} onClick={()=>setView("insights")}>🤖 AI Insights{flaggedCt>0&&<span className="sb-item-ct" style={{color:"#FFB23A"}}>{flaggedCt}</span>}</button>
