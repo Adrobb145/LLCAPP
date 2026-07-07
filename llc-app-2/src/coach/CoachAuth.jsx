@@ -8,7 +8,7 @@ export default function CoachAuth({coaches,onLogin}){
     <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Archivo+Black&family=JetBrains+Mono:wght@400;500;600;700&display=swap');`}</style>
     <div style={{width:340,maxWidth:"100%"}}>
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{display:"inline-flex",alignItems:"center",gap:10}}><div style={{width:34,height:34,background:"#FF6B2C",color:"#0B0B0C",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Archivo Black',sans-serif",fontSize:14,borderRadius:6}}>LL</div><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:22,letterSpacing:".02em"}}>LIVE LONG</div></div>
+        <div style={{display:"inline-flex",alignItems:"center",gap:10}}><img src="/logo.png" alt="" style={{width:40,height:40,objectFit:"contain"}} /><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:22,letterSpacing:".02em"}}>LIVE LONG</div></div>
         <div style={{fontSize:9,color:"#807E76",letterSpacing:".16em",textTransform:"uppercase",marginTop:8}}>Collective · Coach Login</div>
       </div>
       {!picked?(
