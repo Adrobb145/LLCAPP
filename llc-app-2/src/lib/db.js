@@ -1,6 +1,7 @@
 // src/lib/db.js
 // Supabase-backed persistence + onboarding. Maps the app's state maps to rows
-// and back. Diff-based saves: only changed rows are written.
+// and back. Per-column diff saves: only changed columns are written, so a coach
+// session can never overwrite an athlete's logs (and vice versa).
 import { supabase } from "./supabase";
 
 const STATE_COLS = ["program","logs","notes","meals","goals","checkins","bodylog",
@@ -34,7 +35,7 @@ export async function setPassword(password) {
 export async function requestPasswordReset(email) {
   return supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
 }
-// Role-gated server-side invite (owner→coach, coach→athlete). Sends the email.
+// Role-gated server-side invite (owner->coach, coach->athlete). Sends the email.
 export async function deleteClient(clientId) {
   const { data, error } = await supabase.functions.invoke("purge", { body: { clientId } });
   if (error) { let m = error.message; try { const b = await error.context.json(); if (b && b.error) m = b.error; } catch (e) {} throw new Error(m); }
@@ -76,41 +77,65 @@ export async function loadAll() {
 }
 
 // ---- diff-based persist ----------------------------------------------------
+// last.state[cid] holds a PER-COLUMN JSON cache so we can write only the columns
+// this session actually changed. This is what stops a coach/owner session from
+// clobbering an athlete's logs: if the coach didn't touch `logs`, `logs` is never
+// in the payload, and PostgREST upsert leaves that column untouched on the row.
 let last = { coaches: {}, clients: {}, state: {} };
 const J = (v) => JSON.stringify(v);
 
-export async function persist(snapshot) {
-  // Coaches + clients must commit BEFORE client_state — the client_state RLS
-  // policy checks that the client already exists in `clients`.
-  const coachRows = snapshot.coaches.filter((c) => J(c) !== last.coaches[c.id]).map(coachToRow);
-  const clientRows = snapshot.clients.filter((c) => J(c) !== last.clients[c.id]).map(clientToRow);
-  const pre = [];
-  if (coachRows.length) pre.push(supabase.from("coaches").upsert(coachRows));
-  if (clientRows.length) pre.push(supabase.from("clients").upsert(clientRows));
-  if (pre.length) await Promise.all(pre);
+export async function persist(snapshot, role) {
+  const coachSide = role === "coach" || role === "owner";
 
-  const stateRows = [];
-  Object.entries(snapshot.state).forEach(([cid, s]) => { if (J(s) !== last.state[cid]) stateRows.push(stateToRow(cid, s)); });
-  if (stateRows.length) await supabase.from("client_state").upsert(stateRows);
+  // 1) coaches + clients. client_state RLS needs the client to already exist,
+  //    so these commit first. Athletes can only UPDATE their own clients row
+  //    (habits/streaks) and never touch coaches, so they take a scoped path.
+  if (coachSide) {
+    const coachRows  = snapshot.coaches.filter((c) => J(c) !== last.coaches[c.id]).map(coachToRow);
+    const clientRows = snapshot.clients.filter((c) => J(c) !== last.clients[c.id]).map(clientToRow);
+    const pre = [];
+    if (coachRows.length)  pre.push(["coaches",  supabase.from("coaches").upsert(coachRows)]);
+    if (clientRows.length) pre.push(["clients", supabase.from("clients").upsert(clientRows)]);
+    for (const [name, p] of pre) { const { error } = await p; if (error) console.error("LLC " + name + " save error", error.message); }
+  } else {
+    for (const c of snapshot.clients) {
+      if (J(c) === last.clients[c.id]) continue;
+      const { error } = await supabase.from("clients").update({ data: c }).eq("id", c.id);
+      if (error) console.error("LLC client save error", error.message);
+    }
+  }
 
-  // refresh snapshot cache
+  // 2) client_state — PER-COLUMN diff. Only changed columns go in the payload.
+  for (const [cid, s] of Object.entries(snapshot.state)) {
+    const prev = last.state[cid] || {};
+    const patch = { client_id: cid };
+    let any = false;
+    for (const k of STATE_COLS) { const v = J(s[k]); if (v !== prev[k]) { patch[k] = s[k]; any = true; } }
+    if (!any) continue;
+    const { error } = await supabase.from("client_state").upsert(patch);
+    if (error) { console.error("LLC state save error", cid, error.message); continue; } // leave cache stale -> retries next save
+    const store = last.state[cid] || (last.state[cid] = {});
+    STATE_COLS.forEach((k) => { store[k] = J(s[k]); });
+  }
+
+  // 3) refresh coaches/clients cache
   snapshot.coaches.forEach((c) => { last.coaches[c.id] = J(c); });
   snapshot.clients.forEach((c) => { last.clients[c.id] = J(c); });
-  Object.entries(snapshot.state).forEach(([cid, s]) => { last.state[cid] = J(s); });
 }
 
 // Seed the cache after the initial load so the first save doesn't rewrite everything.
+// Stored PER-COLUMN to match the diff in persist().
 export function primeCache(snapshot) {
   last = { coaches: {}, clients: {}, state: {} };
   snapshot.coaches.forEach((c) => { last.coaches[c.id] = J(c); });
   snapshot.clients.forEach((c) => { last.clients[c.id] = J(c); });
-  Object.entries(snapshot.state).forEach(([cid, s]) => { last.state[cid] = J(s); });
+  Object.entries(snapshot.state).forEach(([cid, row]) => {
+    const store = (last.state[cid] = {});
+    STATE_COLS.forEach((k) => { store[k] = J(row[k]); });
+  });
 }
 
 // ---- custom (coach-defined) exercises --------------------------------------
-// Gym-wide movement library additions. Readable by any authenticated user
-// (athletes need them resolvable in their programs); writable by coaches/owner
-// via row-level security on the custom_exercises table.
 export async function loadCustomExercises() {
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -137,9 +162,6 @@ export async function deleteCustomExercise(id) {
 }
 
 // ---- form-review videos (Supabase Storage) ---------------------------------
-// Real upload so the coach can actually watch the clip. Files live in the
-// "Movement Video" bucket under {client_id}/{entryId}.{ext}; RLS lets the
-// athlete read their own and the coach read their clients'.
 const VIDEO_BUCKET = "Movement Video";
 export async function uploadFormVideo(clientId, entryId, file) {
   if (!supabase) return null;
@@ -161,8 +183,6 @@ export async function deleteFormVideo(path) {
 }
 
 // ---- community: challenges + wins feed -------------------------------------
-// Separate from the client_state diff-persist cycle — these write straight to
-// their own tables (RLS-scoped to the premium cohort).
 export async function loadCommunity() {
   if (!supabase) return { challenges: [], progress: [], wins: [], reactions: [], comments: [], roster: [] };
   const [ch, pr, wn, rx, cm, rs] = await Promise.all([
@@ -231,10 +251,6 @@ export async function myAuthId() {
 }
 
 // ---- nutrition lookup ------------------------------------------------------
-// Proxies CalorieNinjas through the `nutrition` Edge Function so the API key
-// stays server-side. Sums macros across returned items (a query can match more
-// than one food). Returns {ok:false, reason} on any miss/error so the custom-
-// food form can fall back to manual entry instead of failing.
 export async function lookupNutrition(query) {
   try {
     const { data, error } = await supabase.functions.invoke("nutrition", { body: { query } });
