@@ -18,6 +18,7 @@ import SessionRunner from "./SessionRunner";
 import Community from "./Community";
 import FoodPicker from "./FoodPicker";
 import { daysForWeek } from "../lib/program";
+import { isoOf, todayISO, dateOf, dayDone, weekDone } from "../lib/schedule";
 import FormReviewClient from "./FormReviewClient";
 import AthCheckin from "./AthCheckin";
 import WeeklyRecap from "./WeeklyRecap";
@@ -28,7 +29,7 @@ const LIFTCOLORS=["#FF6B2C","#3AE0FF","#A78BFA","#3AE07A","#FFD23A","#FF5DA2","#
 const SHORT={"Back Squat":"Squat","Barbell Bench Press":"Bench","Conventional Deadlift":"Deadlift","Overhead Press":"Press","Power Clean":"Clean","Squat Clean":"Sq Clean","Overhead Squat":"OHS","Clean and Jerk":"C&J","Push Jerk":"Jerk","Front Squat":"F.Squat","Barbell Row":"Row","Snatch":"Snatch","Power Snatch":"P.Snatch","Hang Power Clean":"Hang Cl"};
 const shortName=n=>SHORT[n]||n;
 const DEFAULT_LIFTS=["Back Squat","Barbell Bench Press","Conventional Deadlift","Overhead Press","Power Clean"].map(ID).filter(Boolean);
-export default function ClientApp({client,program,clogs,meals,notes,goals,bodylog,checkins,xp,coachName,onToggleHabit,onLogMeal,onSaveSession,onXP,onAddCheckin,onSaveGoals,onLogBody,onSendChat,onAIReply,photos,freezes,ckday,onAddPhoto,onUseFreeze,onSetCkday,misses,onLogMiss,onLogReadiness,onLogout,pillaracts={},onSetAct,formvids=[],vidUrls={},onAddFormVid,trackedLifts=[],onSetTracked,onDeletePhoto,onDeleteFormVid,unreadCoach=0,unreadReview=0,onSeenCoach,onSeenReview,communityData,cmUid,cmNames,cmAccents,onPostWin,onReactWin,onDeleteWin,onAddComment,onDeleteComment,customFoods=[],onAddCustomFood,onDeleteCustomFood,onSetNutrition,onDeleteMeal}){
+export default function ClientApp({client,program,clogs,meals,notes,goals,bodylog,checkins,xp,coachName,onToggleHabit,onLogMeal,onSaveSession,onXP,onAddCheckin,onSaveGoals,onLogBody,onSendChat,onAIReply,photos,freezes,ckday,onAddPhoto,onUseFreeze,onSetCkday,misses,onLogMiss,onLogReadiness,onLogout,pillaracts={},onSetAct,formvids=[],vidUrls={},onAddFormVid,trackedLifts=[],onSetTracked,onDeletePhoto,onDeleteFormVid,unreadCoach=0,unreadReview=0,onSeenCoach,onSeenReview,communityData,cmUid,cmNames,cmAccents,onPostWin,onReactWin,onDeleteWin,onAddComment,onDeleteComment,customFoods=[],onAddCustomFood,onDeleteCustomFood,onSetNutrition,onDeleteMeal,schedule={},onSchedule,onUnschedule,onAdvanceSelf}){
   const [tab,setTab]=useState("home");
   useEffect(()=>{if(tab==="coach"&&onSeenCoach)onSeenCoach();},[tab,unreadCoach]);
   useEffect(()=>{if(tab==="train"&&onSeenReview)onSeenReview();},[tab,unreadReview]);
@@ -50,6 +51,8 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
   const [openP,setOpenP]=useState(null);
   const cw=client.currentWeek;
   const pdays=program?daysForWeek(program,cw,client):[];
+  // A day's effective date: the client-chosen calendar date if set, else the coach's day-of-week.
+  const effDate=(d)=>{const iso=schedule&&schedule[cw]&&schedule[cw][d.id];if(iso){const[y,m,dd]=String(iso).split("-").map(Number);const x=new Date(y,(m||1)-1,dd||1);x.setHours(0,0,0,0);return x;}const DOWI={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};const t0=new Date();t0.setHours(0,0,0,0);const mon=new Date(t0);mon.setDate(t0.getDate()-((t0.getDay()+6)%7));const x=new Date(mon);x.setDate(mon.getDate()+((DOWI[d.dow]+6)%7));x.setHours(0,0,0,0);return x;};
   const dlWeek=isDeload(cw,client.totalWeeks);
   const today=new Date().toISOString().split("T")[0];
   const tActs=pillaracts[today]||{};
@@ -109,7 +112,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
 
     <div style={{padding:"0 16px 18px",flex:1,minHeight:0,overflowY:"auto",WebkitOverflowScrolling:"touch",display:"flex",flexDirection:"column"}}>
       {tab==="home"&&<div style={{display:"flex",flexDirection:"column",gap:12}}>{(unreadCoach>0||unreadReview>0)&&<div onClick={()=>setTab(unreadCoach>0?"coach":"train")} style={{background:client.accent,color:"#0B0B0C",borderRadius:11,padding:"12px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontWeight:800,fontSize:13,boxShadow:"0 4px 16px rgba(0,0,0,.35)"}}><span style={{fontSize:19}}>{unreadCoach>0?"💬":"🎥"}</span><span style={{flex:1,lineHeight:1.3}}>{unreadCoach>0?("Coach replied to your message"+(unreadCoach>1?"s":"")):"Coach reviewed your form"}{unreadCoach>0&&unreadReview>0?" + a form review":""}</span><span style={{fontSize:18}}>›</span></div>}
-        {(()=>{if(!program)return null;const DOWI={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};const t0=new Date();t0.setHours(0,0,0,0);const monday=new Date(t0);monday.setDate(t0.getDate()-((t0.getDay()+6)%7));const dateFor=dow=>{const d=new Date(monday);d.setDate(monday.getDate()+((DOWI[dow]+6)%7));return d;};const logged=dId=>{const dd=pdays.find(x=>x.id===dId);return dd.ex.every(x=>{const e=clogs[`w${cw}|${dId}|${x.exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);});};const handled=dId=>misses.some(m=>m.week===cw&&m.dayId===dId);const items=pdays.map(d=>{const dt=dateFor(d.dow);const done=logged(d.id);const st=done?"done":dt.getTime()===t0.getTime()?"today":dt.getTime()<t0.getTime()?"missed":"up";return{d,dt,st,done};});const todayItem=items.find(i=>i.st==="today");const pend=items.find(i=>i.st==="missed"&&!handled(i.d.id));const REASONS=[["Sick","🤒"],["Life / busy","⏰"],["Sore / tired","💢"],["Low drive","😞"],["Traveling","✈️"]];const fmtD=d=>d.toLocaleDateString("en-US",{weekday:"short"});return(<div style={{background:`linear-gradient(135deg,${D.acc}18,${D.card})`,border:`1px solid ${D.line}`,borderRadius:14,padding:14}}>
+        {(()=>{if(!program)return null;const DOWI={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};const t0=new Date();t0.setHours(0,0,0,0);const monday=new Date(t0);monday.setDate(t0.getDate()-((t0.getDay()+6)%7));const dateFor=dow=>{const d=new Date(monday);d.setDate(monday.getDate()+((DOWI[dow]+6)%7));return d;};const logged=dId=>{const dd=pdays.find(x=>x.id===dId);return dd.ex.every(x=>{const e=clogs[`w${cw}|${dId}|${x.exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);});};const handled=dId=>misses.some(m=>m.week===cw&&m.dayId===dId);const items=pdays.map(d=>{const dt=effDate(d);const done=logged(d.id);const st=done?"done":dt.getTime()===t0.getTime()?"today":dt.getTime()<t0.getTime()?"missed":"up";return{d,dt,st,done};});const todayItem=items.find(i=>i.st==="today");const pend=items.find(i=>i.st==="missed"&&!handled(i.d.id));const REASONS=[["Sick","🤒"],["Life / busy","⏰"],["Sore / tired","💢"],["Low drive","😞"],["Traveling","✈️"]];const fmtD=d=>d.toLocaleDateString("en-US",{weekday:"short"});return(<div style={{background:`linear-gradient(135deg,${D.acc}18,${D.card})`,border:`1px solid ${D.line}`,borderRadius:14,padding:14}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontSize:11,color:D.acc,fontWeight:700,letterSpacing:".12em",textTransform:"uppercase"}}>Today · {t0.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}{dlWeek?" · Deload wk":""}</div><div style={{display:"flex",gap:5}}>{items.map(i=>(<div key={i.d.id} title={`${i.d.name} · ${fmtD(i.dt)}`} style={{width:9,height:9,borderRadius:"50%",background:i.st==="done"?D.good:i.st==="today"?D.acc:i.st==="missed"?"#FF4D4D":D.line}}/>))}</div></div>
           {todayItem?(todayItem.done?<div style={{fontSize:13.5,fontWeight:600,color:D.good}}>✓ {todayItem.d.name} done — that's the standard.</div>:<div style={{display:"flex",alignItems:"center",gap:10}}><div style={{flex:1}}><div style={{fontFamily:"'Archivo Black',sans-serif",fontSize:21,lineHeight:1.05}}>{todayItem.d.name}</div><div style={{fontSize:11,color:D.sub}}>{todayItem.d.ex.length} exercises today · show up, it compounds{dlWeek?" · deload loads":""}</div></div><button onClick={()=>setRun(todayItem.d.id)} style={{background:D.acc,color:"#0B0B0C",border:0,borderRadius:10,padding:"12px 22px",fontFamily:"'Archivo Black',sans-serif",fontSize:13,cursor:"pointer",flexShrink:0}}>START</button></div>):<div style={{fontSize:12.5,color:D.sub}}>🌿 No session scheduled today. Recover with intent — sleep, a walk, mobility, protein.</div>}
           {(()=>{const remaining=PILL.filter(p=>!(client.hab&&client.hab[p[0]]));return(<div style={{marginTop:13,paddingTop:13,borderTop:`1px solid ${D.line}`}}>{remaining.length===0?<div style={{fontSize:12,fontWeight:700,color:D.good}}>✓ All 7 pillars stacked today. That’s the standard.</div>:<><div style={{fontSize:10,color:D.sub,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",marginBottom:8}}>Keep stacking · {7-remaining.length}/7 done</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{remaining.map(p=>(<button key={p[0]} onClick={()=>{onToggleHabit(p[0]);pop("✓ "+p[0]+" — stacked");}} style={{display:"flex",alignItems:"center",gap:6,background:D.lift,border:`1px solid ${D.line}`,borderRadius:20,padding:"6px 12px",cursor:"pointer",fontSize:12,color:D.ink,fontFamily:"inherit",fontWeight:600,textTransform:"capitalize"}}><span style={{fontSize:14}}>{p[1]}</span>{p[0]}</button>))}</div></>}</div>);})()}
@@ -174,6 +177,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
       </div>}
 
       {tab==="train"&&<div style={{paddingTop:6}}>
+        {program&&<TrainCalendar program={program} client={client} cw={cw} clogs={clogs} schedule={schedule} onSchedule={onSchedule} onUnschedule={onUnschedule} onAdvanceSelf={onAdvanceSelf}/>}
         <div style={{fontSize:11,color:D.sub,letterSpacing:".1em",textTransform:"uppercase",fontWeight:700,marginBottom:10}}>Your Program · Week {cw}{dlWeek?" · Deload":""}</div>
         {dlWeek&&<div style={{background:"rgba(255,107,44,.1)",border:`1px solid ${D.acc}55`,borderRadius:9,padding:"9px 12px",marginBottom:10,fontSize:11.5,color:"#FFB23A",lineHeight:1.4}}>🪶 Deload week — loads are lighter and reps trimmed on purpose. Move clean, don't grind.</div>}
         {program?(()=>{
@@ -183,7 +187,7 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
           const dateFor=dow=>{const d=new Date(monday);d.setDate(monday.getDate()+((DOWI[dow]+6)%7));return d;};
           const isLogged=d=>d.ex.every(x=>{const e=clogs[`w${cw}|${d.id}|${x.exId}`];return e&&e.sets.length&&e.sets.every(s=>s.done);});
           const modsOf=d=>[...new Set(d.ex.map(x=>modOf(x).id).filter(id=>id!=="straight"))];
-          const items=pdays.map(d=>{const dt=dateFor(d.dow);const lg=isLogged(d);const st=lg?"done":dt.getTime()===t0.getTime()?"today":dt.getTime()<t0.getTime()?"missed":"up";return{d,dt,lg,st,mods:modsOf(d)};}).sort((a,b)=>a.dt-b.dt);
+          const items=pdays.map(d=>{const dt=effDate(d);const lg=isLogged(d);const st=lg?"done":dt.getTime()===t0.getTime()?"today":dt.getTime()<t0.getTime()?"missed":"up";return{d,dt,lg,st,mods:modsOf(d)};}).sort((a,b)=>a.dt-b.dt);
           const todayItem=items.find(i=>i.dt.getTime()===t0.getTime());
           const rest=items.filter(i=>i!==todayItem);
           const fullDate=t0.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
@@ -299,5 +303,68 @@ export default function ClientApp({client,program,clogs,meals,notes,goals,bodylo
     {recapOpen&&<WeeklyRecap client={client} program={program} clogs={clogs} bodylog={bodylog} misses={misses} stats={stats} cw={cw} onSend={t=>{onSendChat(t);pop("📈 Recap sent to your coach");}} onClose={()=>setRecapOpen(false)}/>}
     {profileOpen&&<Profile name={client.name} email={client.email||""} onClose={()=>setProfileOpen(false)}/>}
     {tab==="progress"&&pickLift&&<ExercisePicker onPick={ex=>{const cur=(trackedLifts&&trackedLifts.length?trackedLifts:DEFAULT_LIFTS).filter(id=>EXBYID[id]);if(!cur.includes(ex.id)&&cur.length<7&&onSetTracked)onSetTracked([...cur,ex.id]);setPickLift(false);}} onClose={()=>setPickLift(false)}/>}
+  </div>);
+}
+
+// ---- Client calendar: place this week's workouts on chosen dates ----------
+function TrainCalendar({program,client,cw,clogs,schedule,onSchedule,onUnschedule,onAdvanceSelf}){
+  const [off,setOff]=useState(0);
+  const navBtn={width:26,height:26,borderRadius:7,border:`1px solid ${D.line}`,background:D.lift,color:D.ink,cursor:"pointer",fontSize:13,lineHeight:1};
+  const days=daysForWeek(program,cw,client);
+  const tw=client.totalWeeks||1;
+  const schedW=(schedule&&schedule[cw])||{};
+  const unplaced=days.filter(d=>!schedW[d.id]);
+  const complete=weekDone(clogs,days,cw);
+  const todayStr=todayISO();
+
+  const base=new Date();base.setHours(0,0,0,0);base.setDate(1);base.setMonth(base.getMonth()+off);
+  const year=base.getFullYear(),month=base.getMonth();
+  const startPad=new Date(year,month,1).getDay();
+  const dim=new Date(year,month+1,0).getDate();
+  const cells=[];for(let i=0;i<startPad;i++)cells.push(null);for(let d=1;d<=dim;d++)cells.push(new Date(year,month,d));
+  const monthLbl=base.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+
+  const dayOn=(iso)=>{for(const dId of Object.keys(schedW))if(schedW[dId]===iso){const d=days.find(x=>x.id===dId);if(d)return d;}return null;};
+  const tap=(cell)=>{
+    if(!cell)return;
+    const iso=isoOf(cell);
+    const ex=dayOn(iso);
+    if(ex){ if(!dayDone(clogs,cw,ex)&&onUnschedule)onUnschedule(cw,ex.id); return; }
+    if(iso<todayStr)return;
+    const next=unplaced[0]; if(next&&onSchedule)onSchedule(cw,next.id,iso);
+  };
+
+  const DOW=["S","M","T","W","T","F","S"];
+  return(<div style={{background:D.card,border:`1px solid ${D.line}`,borderRadius:14,padding:14,marginBottom:14}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+      <div style={{fontSize:11,color:D.acc,fontWeight:800,letterSpacing:".12em",textTransform:"uppercase"}}>Your Calendar · Week {cw}/{tw}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <button onClick={()=>setOff(o=>o-1)} style={navBtn}>‹</button>
+        <span style={{fontSize:11,color:D.sub,minWidth:96,textAlign:"center"}}>{monthLbl}</span>
+        <button onClick={()=>setOff(o=>o+1)} style={navBtn}>›</button>
+      </div>
+    </div>
+    {unplaced.length>0?(
+      <div style={{fontSize:12,color:D.ink,margin:"6px 0 10px"}}>Tap a day to place: {unplaced.map((d,i)=>(<span key={d.id} style={{display:"inline-block",fontSize:11,fontWeight:700,background:i===0?D.acc:D.lift,color:i===0?"#0B0B0C":D.ink,border:`1px solid ${i===0?D.acc:D.line}`,borderRadius:7,padding:"3px 9px",margin:"0 6px 6px 0"}}>{d.name}{i===0?" ◀ next":""}</span>))}</div>
+    ):(<div style={{fontSize:12,color:complete?D.good:D.sub,margin:"6px 0 10px"}}>{complete?`✓ Week ${cw} complete — nice work.`:`All ${days.length} workout${days.length===1?"":"s"} placed. Train them, then start next week.`}</div>)}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+      {DOW.map((d,i)=><div key={"h"+i} style={{textAlign:"center",fontSize:9,color:D.sub,paddingBottom:2}}>{d}</div>)}
+      {cells.map((cell,i)=>{
+        if(!cell)return <div key={"e"+i}/>;
+        const iso=isoOf(cell);const ex=dayOn(iso);const done=ex&&dayDone(clogs,cw,ex);const isToday=iso===todayStr;const past=iso<todayStr;
+        const bg=done?"rgba(58,224,122,.16)":ex?D.acc+"26":"transparent";
+        const bd=done?D.good:ex?D.acc:"transparent";
+        return(<button key={i} onClick={()=>tap(cell)} title={ex?ex.name:""} style={{aspectRatio:"1",borderRadius:8,border:`1px solid ${bd}`,outline:isToday?`2px solid ${D.acc}`:"none",background:bg,color:past&&!ex?"#4A4A50":D.ink,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontSize:12,cursor:"pointer",position:"relative",fontFamily:"inherit",padding:0}}>
+          <span>{cell.getDate()}</span>
+          {ex&&<span style={{fontSize:7.5,fontWeight:700,color:done?D.good:D.acc,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 2px"}}>{done?"✓":ex.name.split(" ")[0]}</span>}
+        </button>);
+      })}
+    </div>
+    <div style={{display:"flex",gap:14,marginTop:9,flexWrap:"wrap",alignItems:"center"}}>
+      <span style={{fontSize:9.5,color:D.sub,display:"inline-flex",alignItems:"center",gap:5}}><i style={{width:10,height:10,borderRadius:3,background:"rgba(58,224,122,.5)",display:"inline-block"}}/>Done</span>
+      <span style={{fontSize:9.5,color:D.sub,display:"inline-flex",alignItems:"center",gap:5}}><i style={{width:10,height:10,borderRadius:3,background:D.acc,display:"inline-block"}}/>Scheduled</span>
+      <span style={{fontSize:9.5,color:D.sub}}>Tap a scheduled day to move it.</span>
+    </div>
+    {complete&&cw<tw&&<button onClick={()=>onAdvanceSelf&&onAdvanceSelf()} style={{marginTop:12,width:"100%",background:D.acc,color:"#0B0B0C",border:0,borderRadius:10,padding:"13px",fontFamily:"'Archivo Black',sans-serif",fontSize:14,cursor:"pointer"}}>Start Week {cw+1} →</button>}
   </div>);
 }
