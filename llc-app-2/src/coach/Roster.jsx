@@ -1,8 +1,10 @@
 // coach/Roster.jsx — client roster with search / filter / sort + delete
 import { useState } from "react";
 import Avatar from "../shared/Avatar";
+import { daysForWeek } from "../lib/program";
+import { dayDone } from "../lib/schedule";
 
-export default function Roster({clients,coaches,onOpen,onAddClient,onEdit,onDelete}){
+export default function Roster({clients,coaches,onOpen,onAddClient,onEdit,onDelete,programs={},logs={},schedule={}}){
   const [q,setQ]=useState("");const [status,setStatus]=useState("all");const [sort,setSort]=useState("attention");
   const [toDelete,setToDelete]=useState(null);
   const flagged=clients.filter(c=>c.adherence<.8).length;
@@ -27,6 +29,7 @@ export default function Roster({clients,coaches,onOpen,onAddClient,onEdit,onDele
       <div className="cc-head"><Avatar txt={c.initials} c={c.accent} size={36}/><div style={{flex:1,minWidth:0}}><div className="cc-name">{c.name}</div><div className="cc-goal">{c.goal}</div></div>{onEdit&&<button title="Edit info" onClick={e=>{e.stopPropagation();onEdit(c);}} style={{background:"none",border:"1px solid #2A2A2E",borderRadius:6,color:"#807E76",cursor:"pointer",fontSize:12,padding:"3px 7px",lineHeight:1}}>✎</button>}{onDelete&&<button title="Delete athlete" onClick={e=>{e.stopPropagation();setToDelete(c);}} style={{background:"none",border:"1px solid #3A2626",borderRadius:6,color:"#C0584A",cursor:"pointer",fontSize:12,padding:"3px 7px",lineHeight:1,marginLeft:4}}>🗑</button>}</div>
       <div className="cc-block"><span>{c.block}</span><span className="mono" style={{color:"#807E76"}}>W{c.currentWeek}/{c.totalWeeks}</span></div>
       <div className="cc-stats"><div><div className="ccs-l">Adherence</div><div className="ccs-v">{Math.round(c.adherence*100)}<span className="ccs-u">%</span></div><div className="abar"><div className="afill" style={{width:c.adherence*100+"%"}}/></div></div><div><div className="ccs-l">Body Wt</div><div className="ccs-v">{c.bw}<span className="ccs-u">lb</span></div></div><div><div className="ccs-l">Coach</div><div className="ccs-v" style={{fontSize:13,color:co?.accent}}>{co?.initials||"—"}</div></div></div>
+      {(()=>{const cwk=c.currentWeek||1;const wsched=((schedule&&schedule[c.id])||{})[cwk]||{};const cdays=programs&&programs[c.id]?daysForWeek(programs[c.id],cwk,c):[];const clg=(logs&&logs[c.id])||{};const total=cdays.length;if(!total)return null;const doneN=cdays.filter(d=>dayDone(clg,cwk,d)).length;const usingCal=Object.keys(wsched).length>0;const unplacedN=cdays.filter(d=>!wsched[d.id]&&!dayDone(clg,cwk,d)).length;return(<div style={{display:"flex",alignItems:"center",gap:8,marginTop:9,paddingTop:9,borderTop:"1px solid #2A2A2E"}}><div style={{display:"flex",gap:3}}>{cdays.map(d=>{const dn=dayDone(clg,cwk,d);const pl=!!wsched[d.id];const col=dn?"#3AE07A":pl?"#FF6B2C":"#3A3A3F";return <span key={d.id} title={d.name+(dn?" · done":pl?" · scheduled":" · not placed")} style={{width:9,height:9,borderRadius:3,background:col,display:"inline-block"}}/>;})}</div><div style={{fontSize:10,color:"#807E76",fontWeight:600}}>{doneN}/{total} done this week{usingCal&&unplacedN>0?` · ${unplacedN} to place`:""}</div></div>);})()}
     </div>);})}</div>
     {list.length===0&&<div style={{padding:"40px 10px",color:"#807E76",textAlign:"center"}}>No clients yet. Use ＋ Add Client to invite your first athlete.</div>}
     {toDelete&&<RosterDeleteModal client={toDelete} onClose={()=>setToDelete(null)} onConfirm={()=>{onDelete&&onDelete(toDelete.id);setToDelete(null);}}/>}

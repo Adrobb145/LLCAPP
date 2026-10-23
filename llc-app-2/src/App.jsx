@@ -293,7 +293,7 @@ export default function App(){
         {(view==="sheet"||view==="planner"||view==="builder")&&<><button className="btn sec" data-on={view==="builder"} onClick={()=>setView("builder")}>✏️ Build</button><button className="btn sec" onClick={()=>setView("planner")}>🗓 Planner</button><button className="btn sec" onClick={()=>setView("sheet")}>📝 Sheet</button></>}
       </div>
       <div className="content">
-        {view==="roster"&&<Roster clients={clients} coaches={coaches} onOpen={openClient} onAddClient={()=>setAddOpen(true)} onEdit={(c)=>setEditId(c.id)} onDelete={removeClient}/>}
+        {view==="roster"&&<Roster clients={clients} coaches={coaches} programs={programs} logs={logs} schedule={schedule} onOpen={openClient} onAddClient={()=>setAddOpen(true)} onEdit={(c)=>setEditId(c.id)} onDelete={removeClient}/>}
         {view==="insights"&&<CoachInsights clients={clients} programs={programs} logs={logs} checkins={checkins} readiness={readiness} onOpen={openClient} onAddCheckin={(cid,ci)=>addCheckin(cid,ci)}/>}
         {view==="sessions"&&<SessionsTracker clients={clients} coaches={coaches} attendance={attendance} authCoach={authCoach} onAddSession={addSession} onToggleAttended={toggleAttended} onRemoveSession={removeSession}/>}
         {view==="community"&&<CommunityCoach data={community} clients={clients} onCreate={createChallengeFor} onEnd={endChallengeFor} myUid={myUid} onComment={(winId,body)=>addCommentFor(winId,body,"coach",(authCoach?.name||"Coach").split(" ")[0])} onDeleteComment={deleteCommentFor} accents={accentOf}/>}
